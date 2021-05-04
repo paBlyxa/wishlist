@@ -9,7 +9,7 @@ import ru.dins.scalaschool.wishlist.db.{UserRepo, WishRepo, WishlistRepo}
 
 import java.util.UUID
 
-class ServiceImpl[F[_]: Sync](userRepo: UserRepo[F], wishlistRepo: WishlistRepo[F], wishRepo: WishRepo[F]) extends Service[F] {
+case class ServiceImpl[F[_]: Sync](userRepo: UserRepo[F], wishlistRepo: WishlistRepo[F], wishRepo: WishRepo[F]) extends Service[F] {
 
   private val F: Sync[F] = Sync[F]
 
