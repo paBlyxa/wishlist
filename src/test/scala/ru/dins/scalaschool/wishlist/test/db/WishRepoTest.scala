@@ -2,14 +2,12 @@ package ru.dins.scalaschool.wishlist.test.db
 
 import cats.effect.IO
 import doobie.implicits._
-import doobie.postgres.implicits._
 import doobie.util.transactor.Transactor
 import org.scalatest.Assertion
 import ru.dins.scalaschool.wishlist.db.{WishRepo, WishRepoImpl}
 import ru.dins.scalaschool.wishlist.models.Models._
 import ru.dins.scalaschool.wishlist.models._
 import ru.dins.scalaschool.wishlist.test.TestExamples._
-
 
 class WishRepoTest extends MyTestContainerForAll {
 
@@ -27,20 +25,13 @@ class WishRepoTest extends MyTestContainerForAll {
       result.unsafeRunSync()
     }
 
-  private val insertUser =
-    sql"insert into users values ($exampleUserId, 'username', 'email', '@username')".update.run
-  private val insertWishlist =
-    sql"insert into wishlist values ($exampleUUID, $exampleUserId, 'wishlist', ${Access.public}, 'comment', $exampleLDT)".update.run
-  private val insertWish =
-    sql"insert into wish (wishlist_id, name, link, price, comment) values ($exampleUUID, 'present', 'some link', '123.45', 'comment')".update
-      .withUniqueGeneratedKeys[Long]("id")
-
   "saveWish" should "return Right(Wish) if save successful" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      sample <- storage.save(exampleUUID, exampleNewWish)
-    } yield sample should matchPattern { case Right(Wish(_, _, "present", Some("some link"), _, Some("comment"), _)) =>
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      sample     <- storage.save(wishlistId, exampleNewWish)
+    } yield sample should matchPattern {
+      case Right(Wish(_, _, "present", Some("some link"), _, Some("comment"), WishStatus.Free, _)) =>
     }
   }
 
@@ -50,11 +41,11 @@ class WishRepoTest extends MyTestContainerForAll {
 
   "removeWish" should "return Unit if note deleted successful" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      id     <- insertWish.transact(xa)
-      result <- storage.remove(id)
-      sample <- storage.get(id)
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      id         <- insertWish(wishlistId).transact(xa)
+      result     <- storage.remove(id)
+      sample     <- storage.get(id)
     } yield (result, sample) shouldBe (Right(()), Left(ApiError.wishNotFound(id)))
   }
 
@@ -68,34 +59,65 @@ class WishRepoTest extends MyTestContainerForAll {
 
   it should "return Right(Wish) if storage return something" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      id     <- insertWish.transact(xa)
-      sample <- storage.get(id)
-    } yield sample should matchPattern { case Right(Wish(_, _, "present", Some("some link"), _, Some("comment"), _)) =>
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      id         <- insertWish(wishlistId).transact(xa)
+      sample     <- storage.get(id)
+    } yield sample should matchPattern {
+      case Right(Wish(_, _, "present", Some("some link"), _, Some("comment"), WishStatus.Free, _)) =>
     }
   }
 
   "updateWish" should "return Wish with modified parameters if update successful" in resetStorage {
     case (storage, xa) =>
       for {
-        _      <- insertUser.transact(xa)
-        _      <- insertWishlist.transact(xa)
-        id     <- insertWish.transact(xa)
-        result <- storage.update(id, exampleWishOption)
+        userId     <- insertUser().transact(xa)
+        wishlistId <- insertWishlist(userId = userId).transact(xa)
+        id         <- insertWish(wishlistId).transact(xa)
+        result     <- storage.update(id, exampleWishOption)
       } yield result should matchPattern {
-        case Right(Wish(_, _, "new present", Some("new link"), _, Some("modified comment"), _)) =>
+        case Right(Wish(_, _, "new present", Some("new link"), _, Some("modified comment"), WishStatus.Free, _)) =>
       }
   }
 
   it should "return Wish with modified comment if update successful" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      id     <- insertWish.transact(xa)
-      result <- storage.update(id, WishOption(None, None, None, Some("modified comment")))
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      id         <- insertWish(wishlistId).transact(xa)
+      result     <- storage.update(id, WishUpdate(None, None, None, Some("modified comment")))
     } yield result should matchPattern {
-      case Right(Wish(_, _, "present", Some("some link"), _, Some("modified comment"), _)) =>
+      case Right(Wish(_, _, "present", Some("some link"), _, Some("modified comment"), WishStatus.Free, _)) =>
     }
+  }
+
+  "getAllByWishlistId" should "return list of wishes with matching wishlist_id" in resetStorage { case (storage, xa) =>
+    for {
+      userId      <- insertUser().transact(xa)
+      wishlist1Id <- insertWishlist(userId = userId).transact(xa)
+      _           <- insertWish(wishlist1Id, "present", "some link", BigDecimal(123.45)).transact(xa)
+      _           <- insertWish(wishlist1Id, "present2", "some link", BigDecimal(123.45)).transact(xa)
+      wishlist2Id <- insertWishlist(userId = userId).transact(xa)
+      _           <- insertWish(wishlist2Id, "present3", "some link", BigDecimal(123.45)).transact(xa)
+      result      <- storage.getAllByWishlistId(wishlist1Id)
+    } yield result should matchPattern {
+      case Right(
+            List(
+              Wish(_, _, "present", Some("some link"), _, Some("comment"), WishStatus.Free, _),
+              Wish(_, _, "present2", Some("some link"), _, Some("comment"), WishStatus.Free, _),
+            ),
+          ) =>
+    }
+  }
+
+  it should "return empty list if non wishes matching wishlist_id" in resetStorage { case (storage, xa) =>
+    for {
+      userId      <- insertUser().transact(xa)
+      wishlist1Id <- insertWishlist(userId = userId).transact(xa)
+      _           <- insertWish(wishlist1Id, "present", "some link", BigDecimal(123.45)).transact(xa)
+      _           <- insertWish(wishlist1Id, "present2", "some link", BigDecimal(123.45)).transact(xa)
+      wishlist2Id <- insertWishlist(userId = userId).transact(xa)
+      result      <- storage.getAllByWishlistId(wishlist2Id)
+    } yield result should matchPattern { case Right(List()) => }
   }
 }

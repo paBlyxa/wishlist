@@ -6,7 +6,7 @@ import io.circe.syntax.EncoderOps
 
 import java.util.UUID
 
-trait ApiError
+sealed trait ApiError
 object ApiError {
 
   def unexpectedError: UnexpectedError                   = UnexpectedError(500, "Unexpected error")

@@ -11,8 +11,8 @@ import doobie.util.invariant.UnexpectedEnd
 import doobie.util.transactor.Transactor.Aux
 import org.postgresql.util.PSQLException
 import org.slf4j.{Logger, LoggerFactory}
-import ru.dins.scalaschool.wishlist.models.ApiError
-import ru.dins.scalaschool.wishlist.models.Models.{NewWish, Wish, WishOption}
+import ru.dins.scalaschool.wishlist.models._
+import ru.dins.scalaschool.wishlist.models.Models.{NewWish, Wish, WishUpdate}
 
 import java.util.UUID
 
@@ -20,21 +20,23 @@ trait WishRepo[F[_]] {
 
   def get(id: Long): F[Either[ApiError, Wish]]
 
+  def getAllByWishlistId(wishlistId: UUID): F[Either[ApiError, List[Wish]]]
+
   def save(wishlistId: UUID, wish: NewWish): F[Either[ApiError, Wish]]
 
   def remove(id: Long): F[Either[ApiError, Unit]]
 
-  def update(id: Long, wish: WishOption): F[Either[ApiError, Wish]]
+  def update(id: Long, wish: WishUpdate): F[Either[ApiError, Wish]]
 }
 
 case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private val wishColumns = List("id", "wishlist_id", "name", "link", "price", "comment", "created_at")
+  private val wishColumns = List("id", "wishlist_id", "name", "link", "price", "comment", "status", "created_at")
 
   override def get(id: Long): F[Either[ApiError, Wish]] =
-    sql"""select * from wish where id = $id limit 1"""
+    sql"""select * from wish where id = $id"""
       .query[Wish]
       .option
       .transact(xa)
@@ -42,6 +44,20 @@ case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
         case Some(wish) => Right(wish)
         case None       => Left(ApiError.wishNotFound(id))
       }
+
+  override def getAllByWishlistId(wishlistId: UUID): F[Either[ApiError, List[Wish]]] = {
+    sql"""select * from wish where wishlist_id = $wishlistId"""
+      .query[Wish]
+      .stream
+      .compile
+      .toList
+      .transact(xa)
+      .attemptSql
+      .map {
+        case Left(_)     => Left(ApiError.unexpectedError)
+        case Right(list) => Right(list)
+      }
+  }
 
   override def save(wishlistId: UUID, wish: NewWish): F[Either[ApiError, Wish]] =
     sql"""insert into wish (wishlist_id, name, link, price, comment)
@@ -62,7 +78,7 @@ case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
   override def remove(id: Long): F[Either[ApiError, Unit]] =
     sql"delete from wish where id = $id".update.run.transact(xa).attempt.map(_ => Right(()))
 
-  override def update(id: Long, wish: WishOption): F[Either[ApiError, Wish]] = {
+  override def update(id: Long, wish: WishUpdate): F[Either[ApiError, Wish]] = {
     val frSetName    = wish.name.map(value => fr"name = $value")
     val frSetLink    = wish.link.map(value => fr"link = $value")
     val frSetPrice   = wish.price.map(value => fr"price = $value")

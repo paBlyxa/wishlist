@@ -1,6 +1,5 @@
 package ru.dins.scalaschool.wishlist.service
 
-import ru.dins.scalaschool.wishlist.models.Models.Access.Access
 import ru.dins.scalaschool.wishlist.models.Models._
 import ru.dins.scalaschool.wishlist.models._
 
@@ -12,23 +11,25 @@ trait Service[F[_]] {
 
   def login(username: String): F[Either[ApiError, User]]
 
-  def save(wishlist: NewWishlist): F[Either[ApiError, Wishlist]]
+  def save(userId: UUID, wishlist: NewWishlist): F[Either[ApiError, Wishlist]]
 
-  def remove(uuid: UUID): F[Either[ApiError, Unit]]
+  def remove(userId: UUID, wishlistId: UUID): F[Either[ApiError, Unit]]
 
-  def addWish(uuid: UUID, wish: NewWish): F[Either[ApiError, Wish]]
+  def addWish(userId: UUID, wishlistId: UUID, wish: NewWish): F[Either[ApiError, Wish]]
 
-  def removeWish(uuid: UUID, wishId: Long): F[Either[ApiError, Unit]]
+  def removeWish(userId: UUID, wishlistId: UUID, wishId: Long): F[Either[ApiError, Unit]]
 
-  def clear(uuid: UUID): F[Either[ApiError, Wishlist]]
+  def clear(userId: UUID, wishlistId: UUID): F[Either[ApiError, Wishlist]]
 
-  def get(uuid: UUID): F[Either[ApiError, Wishlist]]
+  def get(userId: UUID, wishlistId: UUID): F[Either[ApiError, Wishlist]]
 
-  def list: F[Either[ApiError, List[Wishlist]]]
+  def list: F[Either[ApiError, List[WishlistSaved]]]
 
-  def modify(uuid: UUID, wishlist: WishlistOption): F[Either[ApiError, Wishlist]]
+  def modify(userId: UUID, wishlistId: UUID, wishlist: WishlistUpdate): F[Either[ApiError, Wishlist]]
 
-  def modifyWish(wishId: Long, wish: WishOption): F[Either[ApiError, Wish]]
+  def modifyWish(userId: UUID, wishId: Long, wish: WishUpdate): F[Either[ApiError, Wish]]
 
-  def modifyAccess(uuid: UUID, access: Access): F[Either[ApiError, Wishlist]]
+  def modifyAccess(userId: UUID, wishlistId: UUID, access: Access): F[Either[ApiError, Wishlist]]
+
+  def getWishes(userId: UUID, wishlistId: UUID): F[Either[ApiError, List[Wish]]]
 }

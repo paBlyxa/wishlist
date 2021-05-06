@@ -13,7 +13,7 @@ import doobie.util.invariant.UnexpectedEnd
 import org.postgresql.util.PSQLException
 import org.slf4j.{Logger, LoggerFactory}
 import ru.dins.scalaschool.wishlist.models._
-import ru.dins.scalaschool.wishlist.models.Models.{NewUser, User, UserOption}
+import ru.dins.scalaschool.wishlist.models.Models.{NewUser, User, UserUpdate}
 
 import java.util.UUID
 
@@ -25,7 +25,7 @@ trait UserRepo[F[_]] {
 
   def save(user: NewUser): F[Either[ApiError, User]]
 
-  def update(uuid: UUID, user: UserOption): F[Either[ApiError, User]]
+  def update(uuid: UUID, user: UserUpdate): F[Either[ApiError, User]]
 }
 
 case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
@@ -77,7 +77,7 @@ case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
     )
   }
 
-  override def update(uuid: UUID, user: UserOption): F[Either[ApiError, User]] = {
+  override def update(uuid: UUID, user: UserUpdate): F[Either[ApiError, User]] = {
     val frSetUsername   = user.username.map(value => fr"username = $value")
     val frSetEmail      = user.email.map(value => fr"email = $value")
     val frSetTelegramId = user.telegramId.map(value => fr"telegram_id = $value")

@@ -70,7 +70,9 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   }
   // Username already taken in POST /user
   it should "return properly filled error model and HTTP code 422 if username already taken" in {
-    (mockService.registerUser _).expects(exampleNewUser).returns(IO.pure(Left(ApiError.usernameAlreadyTaken("username"))))
+    (mockService.registerUser _)
+      .expects(exampleNewUser)
+      .returns(IO.pure(Left(ApiError.usernameAlreadyTaken("username"))))
 
     val (status, body) = run(Method.POST, "/user", Some(jsonNewUser))
 
@@ -106,11 +108,11 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
     body shouldBe json""" { "code": 404, "message": "User with username=username not found" } """
   }
 
-  // Success case in POST /wishlist
+  // Success case in POST /{userId}/wishlist
   "POST /wishlist" should "return JSON wishlist if service return something" in {
-    (mockService.save _).expects(exampleNewWishlist).returns(IO.pure(Right(exampleWishlist)))
+    (mockService.save _).expects(exampleUserId, exampleNewWishlist).returns(IO.pure(Right(exampleWishlist)))
 
-    val (status, body) = run(Method.POST, "/wishlist", Some(jsonNewWishlist))
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist", Some(jsonNewWishlist))
 
     status shouldBe Status.Ok
     body shouldBe jsonWishlist
@@ -118,25 +120,29 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Bad request in POST /wishlist
   it should "return properly filled error model and HTTP code 400 if body can't be parsed" in {
 
-    val (status, body) = run(Method.POST, "/wishlist")
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist")
 
     status shouldBe Status.BadRequest
     body shouldBe jsonBadRequest
   }
   // User with id not found in POST /wishlist
   it should "return properly filled error model and HTTP code 404 if user not found" in {
-    (mockService.save _).expects(exampleNewWishlist).returns(IO.pure(Left(ApiError.userNotFound(exampleUserId))))
+    (mockService.save _)
+      .expects(exampleUserId, exampleNewWishlist)
+      .returns(IO.pure(Left(ApiError.userNotFound(exampleUserId))))
 
-    val (status, body) = run(Method.POST, "/wishlist", Some(jsonNewWishlist))
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist", Some(jsonNewWishlist))
 
     status shouldBe Status.NotFound
     body shouldBe jsonUserNotFound
   }
   // Unexpected error in POST /wishlist
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    (mockService.save _).expects(exampleNewWishlist).returns(IO.raiseError(new RuntimeException("Ooops")))
+    (mockService.save _)
+      .expects(exampleUserId, exampleNewWishlist)
+      .returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.POST, "/wishlist", Some(jsonNewWishlist))
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist", Some(jsonNewWishlist))
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
@@ -144,69 +150,69 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in DELETE /wishlist/{uuid}
   "DELETE /wishlist/{uuid}" should "return empty json if delete successful" in {
-    (mockService.remove _).expects(exampleUUID).returns(IO.pure(Right(())))
+    (mockService.remove _).expects(exampleUserId, exampleUUID).returns(IO.pure(Right(())))
 
-    val (status, body) = run(Method.DELETE, s"/wishlist/$exampleStrUUID")
+    val (status, body) = run(Method.DELETE, s"/$exampleUserId/wishlist/$exampleStrUUID")
 
     status shouldBe Status.Ok
     body shouldBe jsonEmpty
   }
   // Unexpected error in DELETE /wishlist/{uuid}
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    (mockService.remove _).expects(exampleUUID).returns(IO.raiseError(new RuntimeException("Ooops")))
+    (mockService.remove _).expects(exampleUserId, exampleUUID).returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.DELETE, s"/wishlist/$exampleStrUUID")
+    val (status, body) = run(Method.DELETE, s"/$exampleUserId/wishlist/$exampleStrUUID")
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
   }
 
-  // Success case in POST /wishlist/{uuid}/add
-  "POST /wishlist/{uuid}/add" should "return JSON wishlist if adding wish successful" in {
-    (mockService.addWish _).expects(exampleUUID, exampleNewWish).returns(IO.pure(Right(exampleWish)))
+  // Success case in POST /wishlist/{uuid}/wish
+  "POST /wishlist/{uuid}/wish" should "return JSON wishlist if adding wish successful" in {
+    (mockService.addWish _).expects(exampleUserId, exampleUUID, exampleNewWish).returns(IO.pure(Right(exampleWish)))
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID/add", Some(jsonNewWish))
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID/wish", Some(jsonNewWish))
 
     status shouldBe Status.Ok
     body shouldBe jsonWish
   }
-  // Bad request in POST /wishlist/{uuid}/add
+  // Bad request in POST /wishlist/{uuid}/wish
   it should "return properly filled error model and HTTP code 400 if body can't be parsed" in {
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID/add")
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID/wish")
 
     status shouldBe Status.BadRequest
     body shouldBe jsonBadRequest
   }
-  // User with id not found in POST /wishlist/{uuid}/add
+  // User with id not found in POST /wishlist/{uuid}/wish
   it should "return properly filled error model and HTTP code 404 if user not found" in {
     (mockService.addWish _)
-      .expects(exampleUUID, exampleNewWish)
+      .expects(exampleUserId, exampleUUID, exampleNewWish)
       .returns(IO.pure(Left(ApiError.userNotFound(exampleUserId))))
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID/add", Some(jsonNewWish))
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID/wish", Some(jsonNewWish))
 
     status shouldBe Status.NotFound
     body shouldBe jsonUserNotFound
   }
-  // Wishlist with id not found in POST /wishlist/{uuid}/add
+  // Wishlist with id not found in POST /wishlist/{uuid}/wish
   it should "return properly filled error model and HTTP code 404 if wishlist not found" in {
     (mockService.addWish _)
-      .expects(exampleUUID, exampleNewWish)
+      .expects(exampleUserId, exampleUUID, exampleNewWish)
       .returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID/add", Some(jsonNewWish))
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID/wish", Some(jsonNewWish))
 
     status shouldBe Status.NotFound
     body shouldBe jsonWishlistNotFound
   }
-  // Unexpected error in POST /wishlist/{uuid}/add
+  // Unexpected error in POST /wishlist/{uuid}/wish
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
     (mockService.addWish _)
-      .expects(exampleUUID, exampleNewWish)
+      .expects(exampleUserId, exampleUUID, exampleNewWish)
       .returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID/add", Some(jsonNewWish))
+    val (status, body) = run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID/wish", Some(jsonNewWish))
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
@@ -214,9 +220,9 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in DELETE /wishlist/{uuid}/{wishId}
   "DELETE /wishlist/{uuid}/{wishId}" should "return empty json if delete successful" in {
-    (mockService.removeWish _).expects(exampleUUID, 1).returns(IO.pure(Right(())))
+    (mockService.removeWish _).expects(exampleUserId, exampleUUID, 1).returns(IO.pure(Right(())))
 
-    val (status, body) = run(Method.DELETE, s"/wishlist/$exampleStrUUID/1")
+    val (status, body) = run(Method.DELETE, s"/$exampleUserId/wishlist/$exampleStrUUID/1")
 
     status shouldBe Status.Ok
     body shouldBe jsonEmpty
@@ -224,47 +230,49 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Wishlist with id not found in DELETE /wishlist/{uuid}/{wishId}
   it should "return properly filled error model and HTTP code 404 if wishlist not found" in {
     (mockService.removeWish _)
-      .expects(exampleUUID, 1)
+      .expects(exampleUserId, exampleUUID, 1)
       .returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
 
-    val (status, body) = run(Method.DELETE, s"/wishlist/$exampleStrUUID/1")
+    val (status, body) = run(Method.DELETE, s"/$exampleUserId/wishlist/$exampleStrUUID/1")
 
     status shouldBe Status.NotFound
     body shouldBe jsonWishlistNotFound
   }
   // Unexpected error in DELETE /wishlist/{uuid}/{wishId}
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    (mockService.removeWish _).expects(exampleUUID, 1).returns(IO.raiseError(new RuntimeException("Ooops")))
+    (mockService.removeWish _)
+      .expects(exampleUserId, exampleUUID, 1)
+      .returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.DELETE, s"/wishlist/$exampleStrUUID/1")
+    val (status, body) = run(Method.DELETE, s"/$exampleUserId/wishlist/$exampleStrUUID/1")
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
   }
 
-  // Success case in PATCH /wishlist/{uuid}/clear
-  "PATCH /wishlist/{uuid}/clear" should "return JSON empty wishlist" in {
-    (mockService.clear _).expects(exampleUUID).returns(IO.pure(Right(exampleWishlist)))
+  // Success case in DELETE /wishlist/{uuid}/wishes
+  "DELETE /wishlist/{uuid}/wishes" should "return JSON empty wishlist" in {
+    (mockService.clear _).expects(exampleUserId, exampleUUID).returns(IO.pure(Right(exampleWishlist)))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID/clear")
+    val (status, body) = run(Method.DELETE, s"/$exampleUserId/wishlist/$exampleStrUUID/wishes")
 
     status shouldBe Status.Ok
     body shouldBe jsonWishlist
   }
-  // Wishlist with id not found in PATCH /wishlist/{uuid}/clear
+  // Wishlist with id not found in DELETE /wishlist/{uuid}/wishes
   it should "return properly filled error model and HTTP code 404 if wishlist not found" in {
-    (mockService.clear _).expects(exampleUUID).returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
+    (mockService.clear _).expects(exampleUserId, exampleUUID).returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID/clear")
+    val (status, body) = run(Method.DELETE, s"/$exampleUserId/wishlist/$exampleStrUUID/wishes")
 
     status shouldBe Status.NotFound
     body shouldBe jsonWishlistNotFound
   }
-  // Unexpected error in PATCH /wishlist/{uuid}/clear
+  // Unexpected error in DELETE /wishlist/{uuid}/wishes
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    (mockService.clear _).expects(exampleUUID).returns(IO.raiseError(new RuntimeException("Ooops")))
+    (mockService.clear _).expects(exampleUserId, exampleUUID).returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID/clear")
+    val (status, body) = run(Method.DELETE, s"/$exampleUserId/wishlist/$exampleStrUUID/wishes")
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
@@ -272,27 +280,27 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in GET /wishlist/{uuid}
   "GET /wishlist/{uuid}" should "return JSON wishlist if storage return something" in {
-    (mockService.get _).expects(exampleUUID).returns(IO.pure(Right(exampleWishlist)))
+    (mockService.get _).expects(exampleUserId, exampleUUID).returns(IO.pure(Right(exampleWishlist)))
 
-    val (status, body) = run(Method.GET, s"/wishlist/$exampleStrUUID")
+    val (status, body) = run(Method.GET, s"/$exampleUserId/wishlist/$exampleStrUUID")
 
     status shouldBe Status.Ok
     body shouldBe jsonWishlist
   }
   // Wishlist with id not found in GET /wishlist/{uuid}
   it should "return properly filled error model and HTTP code 404 if wishlist not found" in {
-    (mockService.get _).expects(exampleUUID).returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
+    (mockService.get _).expects(exampleUserId, exampleUUID).returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
 
-    val (status, body) = run(Method.GET, s"/wishlist/$exampleStrUUID")
+    val (status, body) = run(Method.GET, s"/$exampleUserId/wishlist/$exampleStrUUID")
 
     status shouldBe Status.NotFound
     body shouldBe jsonWishlistNotFound
   }
   // Unexpected error in GET /wishlist/{uuid}
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    (mockService.get _).expects(exampleUUID).returns(IO.raiseError(new RuntimeException("Ooops")))
+    (mockService.get _).expects(exampleUserId, exampleUUID).returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.GET, s"/wishlist/$exampleStrUUID")
+    val (status, body) = run(Method.GET, s"/$exampleUserId/wishlist/$exampleStrUUID")
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
@@ -300,18 +308,18 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in GET /wishlist/list
   "GET /wishlist/list" should "return JSON wishlist's list if storage return something" in {
-    (() => mockService.list).expects().returns(IO.pure(Right(List(exampleWishlist))))
+    (() => mockService.list).expects().returns(IO.pure(Right(List(exampleWishlistSaved))))
 
-    val (status, body) = run(Method.GET, s"/wishlist/list")
+    val (status, body) = run(Method.GET, s"/$exampleUserId/wishlist/list")
 
     status shouldBe Status.Ok
     body shouldBe jsonListOfWishlist
   }
-  // Unexpected error in GET /wishlist/{uuid}
+  // Unexpected error in GET /wishlist/{uuid}/list
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
     (() => mockService.list).expects().returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.GET, s"/wishlist/list")
+    val (status, body) = run(Method.GET, s"/$exampleUserId/wishlist/list")
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
@@ -319,9 +327,11 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in PATCH /wishlist/{uuid}
   "PATCH /wishlist/{uuid}" should "return JSON wishlist with modified parameters" in {
-    (mockService.modify _).expects(exampleUUID, exampleWishlistOption).returns(IO.pure(Right(exampleWishlist)))
+    (mockService.modify _)
+      .expects(exampleUserId, exampleUUID, exampleWishlistOption)
+      .returns(IO.pure(Right(exampleWishlist)))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID", Some(jsonWishlistOption))
+    val (status, body) = run(Method.PATCH, s"/$exampleUserId/wishlist/$exampleStrUUID", Some(jsonWishlistOption))
 
     status shouldBe Status.Ok
     body shouldBe jsonWishlist
@@ -329,10 +339,11 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Success case in PATCH /wishlist/{uuid}
   it should "return JSON wishlist with modified name" in {
     (mockService.modify _)
-      .expects(exampleUUID, WishlistOption(Some("new name"), None))
+      .expects(exampleUserId, exampleUUID, WishlistUpdate(Some("new name"), None))
       .returns(IO.pure(Right(exampleWishlist)))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID", Some(json""" { "name": "new name" } """))
+    val (status, body) =
+      run(Method.PATCH, s"/$exampleUserId/wishlist/$exampleStrUUID", Some(json""" { "name": "new name" } """))
 
     status shouldBe Status.Ok
     body shouldBe jsonWishlist
@@ -340,10 +351,11 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Success case in PATCH /wishlist/{uuid}
   it should "return JSON wishlist with modified comment" in {
     (mockService.modify _)
-      .expects(exampleUUID, WishlistOption(None, Some("new comment")))
+      .expects(exampleUserId, exampleUUID, WishlistUpdate(None, Some("new comment")))
       .returns(IO.pure(Right(exampleWishlist)))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID", Some(json""" { "comment": "new comment" } """))
+    val (status, body) =
+      run(Method.PATCH, s"/$exampleUserId/wishlist/$exampleStrUUID", Some(json""" { "comment": "new comment" } """))
 
     status shouldBe Status.Ok
     body shouldBe jsonWishlist
@@ -351,7 +363,7 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Bad request in PATCH /wishlist/{uuid}
   it should "return properly filled error model and HTTP code 400 if body can't be parsed" in {
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID")
+    val (status, body) = run(Method.PATCH, s"/$exampleUserId/wishlist/$exampleStrUUID")
 
     status shouldBe Status.BadRequest
     body shouldBe jsonBadRequest
@@ -359,10 +371,10 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Wishlist with id not found in PATCH /wishlist/{uuid}
   it should "return properly filled error model and HTTP code 404 if wishlist not found" in {
     (mockService.modify _)
-      .expects(exampleUUID, exampleWishlistOption)
+      .expects(exampleUserId, exampleUUID, exampleWishlistOption)
       .returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID", Some(jsonWishlistOption))
+    val (status, body) = run(Method.PATCH, s"/$exampleUserId/wishlist/$exampleStrUUID", Some(jsonWishlistOption))
 
     status shouldBe Status.NotFound
     body shouldBe jsonWishlistNotFound
@@ -370,10 +382,10 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Unexpected error in PATCH /wishlist/{uuid}
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
     (mockService.modify _)
-      .expects(exampleUUID, exampleWishlistOption)
+      .expects(exampleUserId, exampleUUID, exampleWishlistOption)
       .returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/$exampleStrUUID", Some(jsonWishlistOption))
+    val (status, body) = run(Method.PATCH, s"/$exampleUserId/wishlist/$exampleStrUUID", Some(jsonWishlistOption))
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
@@ -381,9 +393,9 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in PATCH /wishlist/wish/{wishId}
   "PATCH /wishlist/wish/{wishId}" should "return JSON wish with modified parameters" in {
-    (mockService.modifyWish _).expects(1, exampleWishOption).returns(IO.pure(Right(exampleWish)))
+    (mockService.modifyWish _).expects(exampleUserId, 1, exampleWishOption).returns(IO.pure(Right(exampleWish)))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/wish/1", Some(jsonWishOption))
+    val (status, body) = run(Method.PATCH, s"/$exampleUserId/wishlist/wish/1", Some(jsonWishOption))
 
     status shouldBe Status.Ok
     body shouldBe jsonWish
@@ -391,10 +403,11 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Success case in PATCH /wishlist/wish/{wishId}
   it should "return JSON wish with modified comment" in {
     (mockService.modifyWish _)
-      .expects(1, WishOption(None, None, None, Some("new comment")))
+      .expects(exampleUserId, 1, WishUpdate(None, None, None, Some("new comment")))
       .returns(IO.pure(Right(exampleWish)))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/wish/1", Some(json""" { "comment": "new comment" } """))
+    val (status, body) =
+      run(Method.PATCH, s"/$exampleUserId/wishlist/wish/1", Some(json""" { "comment": "new comment" } """))
 
     status shouldBe Status.Ok
     body shouldBe jsonWish
@@ -402,25 +415,29 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Bad request in PATCH /wishlist/wish/{wishId}
   it should "return properly filled error model and HTTP code 400 if body can't be parsed" in {
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/wish/1")
+    val (status, body) = run(Method.PATCH, s"/$exampleUserId/wishlist/wish/1")
 
     status shouldBe Status.BadRequest
     body shouldBe jsonBadRequest
   }
   // Wish with id not found in PATCH /wishlist/wish/{wishId}
   it should "return properly filled error model and HTTP code 404 if wish not found" in {
-    (mockService.modifyWish _).expects(99, exampleWishOption).returns(IO.pure(Left(ApiError.wishNotFound(99))))
+    (mockService.modifyWish _)
+      .expects(exampleUserId, 99, exampleWishOption)
+      .returns(IO.pure(Left(ApiError.wishNotFound(99))))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/wish/99", Some(jsonWishOption))
+    val (status, body) = run(Method.PATCH, s"/$exampleUserId/wishlist/wish/99", Some(jsonWishOption))
 
     status shouldBe Status.NotFound
     body shouldBe jsonWishNotFound
   }
   // Unexpected error in PATCH /wishlist/wish/{wishId}
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    (mockService.modifyWish _).expects(99, exampleWishOption).returns(IO.raiseError(new RuntimeException("Ooops")))
+    (mockService.modifyWish _)
+      .expects(exampleUserId, 99, exampleWishOption)
+      .returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.PATCH, s"/wishlist/wish/99", Some(jsonWishOption))
+    val (status, body) = run(Method.PATCH, s"/$exampleUserId/wishlist/wish/99", Some(jsonWishOption))
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
@@ -428,9 +445,12 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in POST /wishlist/{uuid}?access=<Access>
   "POST /wishlist/{uuid}?access=<Access>" should "return wishlist with modified access" in {
-    (mockService.modifyAccess _).expects(exampleUUID, Access.public).returns(IO.pure(Right(exampleWishlist)))
+    (mockService.modifyAccess _)
+      .expects(exampleUserId, exampleUUID, Access.Public)
+      .returns(IO.pure(Right(exampleWishlist)))
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID", None, Some(Map("access" -> "public")))
+    val (status, body) =
+      run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID", None, Some(Map("access" -> "public")))
 
     status shouldBe Status.Ok
     body shouldBe jsonWishlist
@@ -438,7 +458,8 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Bad request in PATCH /wishlist/{uuid}?access=<Access>
   it should "return properly filled error model and HTTP code 400 if body can't be parsed" in {
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID", None, Some(Map("access" -> "publ")))
+    val (status, body) =
+      run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID", None, Some(Map("access" -> "publ")))
 
     status shouldBe Status.BadRequest
     body shouldBe jsonBadRequest
@@ -446,10 +467,11 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Wishlist with id not found in PATCH /wishlist/{uuid}?access=<Access>
   it should "return properly filled error model and HTTP code 404 if wishlist not found" in {
     (mockService.modifyAccess _)
-      .expects(exampleUUID, Access.public)
+      .expects(exampleUserId, exampleUUID, Access.Public)
       .returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID", None, Some(Map("access" -> "public")))
+    val (status, body) =
+      run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID", None, Some(Map("access" -> "public")))
 
     status shouldBe Status.NotFound
     body shouldBe jsonWishlistNotFound
@@ -457,10 +479,39 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Unexpected error in PATCH /wishlist/{uuid}?access=<Access>
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
     (mockService.modifyAccess _)
-      .expects(exampleUUID, Access.public)
+      .expects(exampleUserId, exampleUUID, Access.Public)
       .returns(IO.raiseError(new RuntimeException("Ooops")))
 
-    val (status, body) = run(Method.POST, s"/wishlist/$exampleStrUUID", None, Some(Map("access" -> "public")))
+    val (status, body) =
+      run(Method.POST, s"/$exampleUserId/wishlist/$exampleStrUUID", None, Some(Map("access" -> "public")))
+
+    status shouldBe Status.InternalServerError
+    body shouldBe jsonUnexpectedError
+  }
+
+  // Success case in GET /wishlist/{uuid}/wishes
+  "GET /wishlist/{uuid}/wishes" should "return list of wishes if storage return something" in {
+    (mockService.getWishes _).expects(exampleUserId, exampleUUID).returns(IO.pure(Right(List(exampleWish))))
+
+    val (status, body) = run(Method.GET, path = s"/$exampleUserId/wishlist/$exampleUUID/wishes")
+
+    status shouldBe Status.Ok
+    body shouldBe jsonWishes
+  }
+  // Wishlist with id not found in GET /wishlist/{uuid}/wishes
+  it should "return properly filled error model and HTTP code 404 if wishlist not found" in {
+    (mockService.getWishes _).expects(exampleUserId, exampleUUID).returns(IO.pure(Left(ApiError.notFound(exampleUUID))))
+
+    val (status, body) = run(Method.GET, path = s"/$exampleUserId/wishlist/$exampleUUID/wishes")
+
+    status shouldBe Status.NotFound
+    body shouldBe jsonWishlistNotFound
+  }
+  // Unexpected error in GET /wishlist/{uuid}/wishes
+  it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
+    (mockService.getWishes _).expects(exampleUserId, exampleUUID).returns(IO.raiseError(new RuntimeException("Ooops")))
+
+    val (status, body) = run(Method.GET, path = s"/$exampleUserId/wishlist/$exampleUUID/wishes")
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError

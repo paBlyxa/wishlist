@@ -16,7 +16,7 @@ object Main extends IOApp {
   private def createTransactor() =
     Transactor.fromDriverManager[IO](
       driver = "org.postgresql.Driver",
-      url = "jdbc:postgresql:postgres",
+      url = "jdbc:postgresql://db:5432/wishlist",
       user = "postgres",
       pass = "postgres",
     )
