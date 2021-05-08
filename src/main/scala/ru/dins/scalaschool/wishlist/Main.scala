@@ -13,13 +13,19 @@ import sttp.tapir.swagger.http4s.SwaggerHttp4s
 
 object Main extends IOApp {
 
-  private def createTransactor() =
+  private def createTransactor() = {
+    val host = sys.env.getOrElse("POSTGRES_HOST", "db")
+    val port = sys.env.getOrElse("POSTGRES_PORT", "5432")
+    val user = sys.env.getOrElse("POSTGRES_USER", "postgres")
+    val pass = sys.env.getOrElse("POSTGRES_PASSWORD", "postgres")
+    val db   = sys.env.getOrElse("POSTGRES_DB", "wishlist")
     Transactor.fromDriverManager[IO](
       driver = "org.postgresql.Driver",
-      url = "jdbc:postgresql://db:5432/wishlist",
-      user = "postgres",
-      pass = "postgres",
+      url = s"jdbc:postgresql://$host:$port/$db",
+      user = user,
+      pass = pass,
     )
+  }
 
   override def run(args: List[String]): IO[ExitCode] = {
     val xa           = createTransactor()
