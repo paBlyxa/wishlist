@@ -11,7 +11,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import ru.dins.scalaschool.wishlist.db.Migrations
-import ru.dins.scalaschool.wishlist.models.Access
+import ru.dins.scalaschool.wishlist.models.{Access, UserId, WishlistId}
 import ru.dins.scalaschool.wishlist.test.TestExamples._
 
 import java.util.UUID
@@ -39,25 +39,25 @@ trait MyTestContainerForAll extends AnyFlatSpec with Matchers with TestContainer
   }
 
   def insertUser(
-      userId: UUID = UUID.randomUUID(),
+      userId: UserId = UserId(UUID.randomUUID()),
       username: String = "username",
       email: String = "email",
       telegramId: String = "@username",
-  ): doobie.ConnectionIO[UUID] =
-    sql"insert into users values ($userId, $username, $email, $telegramId)".update.withUniqueGeneratedKeys[UUID]("id")
+  ): doobie.ConnectionIO[UserId] =
+    sql"insert into users values ($userId, $username, $email, $telegramId)".update.withUniqueGeneratedKeys[UserId]("id")
 
   def insertWishlist(
-      wishlistId: UUID = UUID.randomUUID(),
-      userId: UUID,
+      wishlistId: WishlistId = WishlistId(UUID.randomUUID()),
+      userId: UserId,
       name: String = "wishlist",
       access: Access = Access.Public,
       comment: String = "comment",
-  ): doobie.ConnectionIO[UUID] =
+  ): doobie.ConnectionIO[WishlistId] =
     sql"insert into wishlist values ($wishlistId, $userId, $name, $access, $comment, $exampleLDT)".update
-      .withUniqueGeneratedKeys[UUID]("id")
+      .withUniqueGeneratedKeys[WishlistId]("id")
 
   def insertWish(
-      wishlistId: UUID = exampleUUID,
+      wishlistId: WishlistId = exampleWishlistId,
       name: String = "present",
       link: String = "some link",
       price: BigDecimal = BigDecimal(123.45),

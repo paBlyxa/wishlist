@@ -14,15 +14,13 @@ import org.slf4j.{Logger, LoggerFactory}
 import ru.dins.scalaschool.wishlist.models._
 import ru.dins.scalaschool.wishlist.models.Models.{NewWish, Wish, WishUpdate}
 
-import java.util.UUID
-
 trait WishRepo[F[_]] {
 
   def get(id: Long): F[Either[ApiError, Wish]]
 
-  def getAllByWishlistId(wishlistId: UUID): F[Either[ApiError, List[Wish]]]
+  def getAllByWishlistId(wishlistId: WishlistId): F[Either[ApiError, List[Wish]]]
 
-  def save(wishlistId: UUID, wish: NewWish): F[Either[ApiError, Wish]]
+  def save(wishlistId: WishlistId, wish: NewWish): F[Either[ApiError, Wish]]
 
   def remove(id: Long): F[Either[ApiError, Unit]]
 
@@ -45,7 +43,7 @@ case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
         case None       => Left(ApiError.wishNotFound(id))
       }
 
-  override def getAllByWishlistId(wishlistId: UUID): F[Either[ApiError, List[Wish]]] = {
+  override def getAllByWishlistId(wishlistId: WishlistId): F[Either[ApiError, List[Wish]]] =
     sql"""select * from wish where wishlist_id = $wishlistId"""
       .query[Wish]
       .stream
@@ -57,9 +55,8 @@ case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
         case Left(_)     => Left(ApiError.unexpectedError)
         case Right(list) => Right(list)
       }
-  }
 
-  override def save(wishlistId: UUID, wish: NewWish): F[Either[ApiError, Wish]] =
+  override def save(wishlistId: WishlistId, wish: NewWish): F[Either[ApiError, Wish]] =
     sql"""insert into wish (wishlist_id, name, link, price, comment)
          values ($wishlistId, ${wish.name}, ${wish.link}, ${wish.price}, ${wish.comment})
        """.update

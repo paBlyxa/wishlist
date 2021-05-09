@@ -17,10 +17,10 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
   private val service = ServiceImpl(userRepo, wishlistRepo, wishRepo)
 
   "clear" should "return empty Wishlist if storage return something" in {
-    (wishlistRepo.clear _).expects(exampleUUID).returns(IO.pure(Right(())))
-    (wishlistRepo.get _).expects(exampleUUID).returns(IO.pure(Right(exampleWishlistSaved)))
+    (wishlistRepo.clear _).expects(exampleWishlistId).returns(IO.pure(Right(())))
+    (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
 
-    service.clear(exampleUserId, exampleUUID).unsafeRunSync() shouldBe Right(exampleWishlistEmpty)
+    service.clear(exampleUserId, exampleWishlistId).unsafeRunSync() shouldBe Right(exampleWishlistEmpty)
   }
 
 //  it should "return ApiError.UnexpectedError if unexpected error occurred" in {
@@ -30,16 +30,16 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
 //  }
 
   "get" should "return Wishlist with wishes if storage return something" in {
-    (wishlistRepo.get _).expects(exampleUUID).returns(IO.pure(Right(exampleWishlistSaved)))
-    (wishRepo.getAllByWishlistId _).expects(exampleUUID).returns(IO.pure(Right(List(exampleWish))))
+    (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
+    (wishRepo.getAllByWishlistId _).expects(exampleWishlistId).returns(IO.pure(Right(List(exampleWish))))
 
-    service.get(exampleUserId, exampleUUID).unsafeRunSync() shouldBe Right(exampleWishlist)
+    service.get(exampleUserId, exampleWishlistId).unsafeRunSync() shouldBe Right(exampleWishlist)
   }
 
   it should "return Wishlist with empty wishes if storage return empty wishes" in {
-    (wishlistRepo.get _).expects(exampleUUID).returns(IO.pure(Right(exampleWishlistSaved)))
-    (wishRepo.getAllByWishlistId _).expects(exampleUUID).returns(IO.pure(Right(List())))
+    (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
+    (wishRepo.getAllByWishlistId _).expects(exampleWishlistId).returns(IO.pure(Right(List())))
 
-    service.get(exampleUserId, exampleUUID).unsafeRunSync() shouldBe Right(exampleWishlistEmpty)
+    service.get(exampleUserId, exampleWishlistId).unsafeRunSync() shouldBe Right(exampleWishlistEmpty)
   }
 }

@@ -36,7 +36,7 @@ class WishRepoTest extends MyTestContainerForAll {
   }
 
   it should "return Left(NotFound) if wishlist with id not found" in resetStorage { case (storage, _) =>
-    storage.save(exampleUUID, exampleNewWish).map(_ shouldBe Left(ApiError.notFound(exampleUUID)))
+    storage.save(exampleWishlistId, exampleNewWish).map(_ shouldBe Left(ApiError.notFound(exampleWishlistId)))
   }
 
   "removeWish" should "return Unit if note deleted successful" in resetStorage { case (storage, xa) =>

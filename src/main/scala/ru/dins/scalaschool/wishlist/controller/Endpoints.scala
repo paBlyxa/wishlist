@@ -6,8 +6,7 @@ import sttp.model.StatusCode
 import sttp.tapir._
 import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.generic.auto._
-
-import java.util.UUID
+import sttp.tapir.codec.newtype._
 
 object Endpoints {
 
@@ -23,7 +22,7 @@ object Endpoints {
           ),
           oneOfMapping(
             StatusCode.NotFound,
-            jsonBody[NotFound].description("Not found").example(ApiError.notFound(exampleUUID)),
+            jsonBody[NotFound].description("Not found").example(ApiError.notFound(exampleWishlistId)),
           ),
           oneOfMapping(
             StatusCode.UnprocessableEntity,
@@ -53,14 +52,14 @@ object Endpoints {
 
   private val base =
     errorOut
-      .in(path[UUID].description("User's id").example(exampleUUID))
+      .in(path[UserId].description("User's id").example(exampleUserID))
       .in("wishlist")
 
   private val baseWithPathId =
     base
-      .in(path[UUID].description("Wishlist's id").example(exampleUUID))
+      .in(path[WishlistId].description("Wishlist's id").example(exampleWishlistId))
 
-  val createWishlist: Endpoint[(UUID, NewWishlist), ApiError, Wishlist, Any] =
+  val createWishlist: Endpoint[(UserId, NewWishlist), ApiError, Wishlist, Any] =
     base.post
       .description("Create new wishlist")
       .in(
@@ -70,10 +69,10 @@ object Endpoints {
       )
       .out(jsonBody[Wishlist].description("New wishlist").example(exampleWishlist))
 
-  val removeWishlist: Endpoint[(UUID, UUID), ApiError, Unit, Any] =
+  val removeWishlist: Endpoint[(UserId, WishlistId), ApiError, Unit, Any] =
     baseWithPathId.delete.description("Delete wishlist by id").out(jsonBody[Unit].description("Empty json body"))
 
-  val addWishToList: Endpoint[(UUID, UUID, NewWish), ApiError, Wish, Any] =
+  val addWishToList: Endpoint[(UserId, WishlistId, NewWish), ApiError, Wish, Any] =
     baseWithPathId.post
       .description("Add wish to list")
       .in("wish")
@@ -86,25 +85,25 @@ object Endpoints {
       )
       .out(jsonBody[Wish].description("New wish").example(exampleWish))
 
-  val removeWishFromList: Endpoint[(UUID, UUID, Long), ApiError, Unit, Any] =
+  val removeWishFromList: Endpoint[(UserId, WishlistId, Long), ApiError, Unit, Any] =
     baseWithPathId.delete
       .description("Remove wish from list")
       .in(path[Long].description("Wish's id to remove from wishlist").example(1))
       .out(jsonBody[Unit].description("Empty json body"))
 
-  val clearWishlist: Endpoint[(UUID, UUID), ApiError, Wishlist, Any] =
+  val clearWishlist: Endpoint[(UserId, WishlistId), ApiError, Wishlist, Any] =
     baseWithPathId.delete
       .description("Clear wishlist")
       .in("wishes")
       .out(jsonBody[Wishlist].description("Empty wishlist").example(exampleWishlist))
 
-  val getWishlist: Endpoint[(UUID, UUID), ApiError, Wishlist, Any] =
+  val getWishlist: Endpoint[(UserId, WishlistId), ApiError, Wishlist, Any] =
     baseWithPathId.get
       .description("Get wishlist")
       .out(jsonBody[Wishlist].description("Wishlist").example(exampleWishlist))
 
   //TODO: add filter and order
-  val getWishlists: Endpoint[UUID, ApiError, List[WishlistSaved], Any] =
+  val getWishlists: Endpoint[UserId, ApiError, List[WishlistSaved], Any] =
     base.get
       .description("Get wishlists")
       .in("list")
@@ -114,7 +113,7 @@ object Endpoints {
           .example(List(exampleWishlistSaved)),
       )
 
-  val modifyWishlist: Endpoint[(UUID, UUID, WishlistUpdate), ApiError, Wishlist, Any] =
+  val modifyWishlist: Endpoint[(UserId, WishlistId, WishlistUpdate), ApiError, Wishlist, Any] =
     baseWithPathId.patch
       .description("Modify wishlist")
       .in(
@@ -124,7 +123,7 @@ object Endpoints {
       )
       .out(jsonBody[Wishlist].description("Wishlist with modified parameters").example(exampleModifiedWishlist))
 
-  val modifyWish: Endpoint[(UUID, Long, WishUpdate), ApiError, Wish, Any] =
+  val modifyWish: Endpoint[(UserId, Long, WishUpdate), ApiError, Wish, Any] =
     base.patch
       .description("Modify wish")
       .in("wish" / path[Long].description("Wish's id").example(1))
@@ -135,13 +134,13 @@ object Endpoints {
       )
       .out(jsonBody[Wish].description("Wish with modified parameters").example(exampleModifiedWish))
 
-  val modifyAccess: Endpoint[(UUID, UUID, Access), ApiError, Wishlist, Any] =
+  val modifyAccess: Endpoint[(UserId, WishlistId, Access), ApiError, Wishlist, Any] =
     baseWithPathId.post
       .description("Change wishlist's access")
       .in(query[Access]("access").description("Access value: private, public"))
       .out(jsonBody[Wishlist].description("Wishlist with modified access").example(exampleWishlist))
 
-  val getWishes: Endpoint[(UUID, UUID), ApiError, List[Wish], Any] =
+  val getWishes: Endpoint[(UserId, WishlistId), ApiError, List[Wish], Any] =
     baseWithPathId.get
       .description("Get all wishes in wishlist")
       .in("wishes")

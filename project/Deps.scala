@@ -3,7 +3,7 @@ import sbt._
 object Deps {
   object Versions {
     val http4s           = "0.21.22"
-    val circe            = "0.13.0"
+    val circe            = "0.14.0-M6"
     val doobie           = "0.12.1"
     val scalatest        = "3.2.2"
     val testContainers   = "0.39.3"
@@ -12,6 +12,7 @@ object Deps {
     val tapir            = "0.18.0-M7"
     val enumeratum       = "1.6.1"
     val enumeratumDoobie = "1.6.0"
+    val newtype          = "0.4.4"
   }
 
   val http4s = Seq(
@@ -59,11 +60,16 @@ object Deps {
     "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs"       % Versions.tapir,
     "com.softwaremill.sttp.tapir" %% "tapir-openapi-circe-yaml" % Versions.tapir,
     "com.softwaremill.sttp.tapir" %% "tapir-enumeratum"         % Versions.tapir,
+    "com.softwaremill.sttp.tapir" %% "tapir-newtype"            % Versions.tapir,
   )
 
   val enumeratum = Seq(
     "com.beachape" %% "enumeratum"        % Versions.enumeratum,
     "com.beachape" %% "enumeratum-circe"  % Versions.enumeratum,
     "com.beachape" %% "enumeratum-doobie" % Versions.enumeratumDoobie,
+  )
+
+  val newtype = Seq(
+    "io.estatico" %% "newtype" % Versions.newtype,
   )
 }

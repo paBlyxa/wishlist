@@ -12,26 +12,26 @@ import doobie.util.invariant.UnexpectedEnd
 import doobie.util.transactor.Transactor.Aux
 import org.postgresql.util.PSQLException
 import org.slf4j.{Logger, LoggerFactory}
-import ru.dins.scalaschool.wishlist.models.{Access, ApiError}
+import ru.dins.scalaschool.wishlist.models._
 import ru.dins.scalaschool.wishlist.models.Models._
 
 import java.util.UUID
 
 trait WishlistRepo[F[_]] {
 
-  def save(userId: UUID, wishlist: NewWishlist): F[Either[ApiError, WishlistSaved]]
+  def save(userId: UserId, wishlist: NewWishlist): F[Either[ApiError, WishlistSaved]]
 
-  def remove(uuid: UUID): F[Either[ApiError, Unit]]
+  def remove(wishlistId: WishlistId): F[Either[ApiError, Unit]]
 
-  def get(uuid: UUID): F[Either[ApiError, WishlistSaved]]
+  def get(wishlistId: WishlistId): F[Either[ApiError, WishlistSaved]]
 
-  def clear(uuid: UUID): F[Either[ApiError, Unit]]
+  def clear(wishlistId: WishlistId): F[Either[ApiError, Unit]]
 
   def findAll: F[Either[ApiError, List[WishlistSaved]]]
 
-  def update(uuid: UUID, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]]
+  def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]]
 
-  def update(uuid: UUID, access: Access): F[Either[ApiError, WishlistSaved]]
+  def update(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]]
 }
 
 case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F] {
@@ -40,7 +40,7 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
 
   private val wishlistColumns = List("id", "user_id", "name", "access", "comment", "created_at")
 
-  override def save(userId: UUID, wishlist: NewWishlist): F[Either[ApiError, WishlistSaved]] = {
+  override def save(userId: UserId, wishlist: NewWishlist): F[Either[ApiError, WishlistSaved]] = {
     val query = for {
       uuid <- generateUUID
       query =
@@ -63,21 +63,21 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
     )
   }
 
-  override def remove(uuid: UUID): F[Either[ApiError, Unit]] =
-    sql"delete from wishlist where id = $uuid".update.run.transact(xa).map(_ => Right(()))
+  override def remove(wishlistId: WishlistId): F[Either[ApiError, Unit]] =
+    sql"delete from wishlist where id = $wishlistId".update.run.transact(xa).map(_ => Right(()))
 
-  override def get(uuid: UUID): F[Either[ApiError, WishlistSaved]] =
-    sql"""select * from wishlist where id = $uuid"""
+  override def get(wishlistId: WishlistId): F[Either[ApiError, WishlistSaved]] =
+    sql"""select * from wishlist where id = $wishlistId"""
       .query[WishlistSaved]
       .option
       .transact(xa)
       .map {
         case Some(wishlist) => Right(wishlist)
-        case None           => Left(ApiError.notFound(uuid))
+        case None           => Left(ApiError.notFound(wishlistId))
       }
 
-  override def clear(uuid: UUID): F[Either[ApiError, Unit]] =
-    sql"delete from wish where wishlist_id = $uuid".update.run.transact(xa).attempt.map(_ => Right(()))
+  override def clear(wishlistId: WishlistId): F[Either[ApiError, Unit]] =
+    sql"delete from wish where wishlist_id = $wishlistId".update.run.transact(xa).attempt.map(_ => Right(()))
 
   override def findAll: F[Either[ApiError, List[WishlistSaved]]] =
     sql"select * from wishlist"
@@ -92,10 +92,10 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
         case Right(list) => Right(list)
       }
 
-  override def update(uuid: UUID, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]] = {
+  override def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]] = {
     val frSetName    = wishlist.name.map(value => fr"name = $value")
     val frSetComment = wishlist.comment.map(value => fr"comment = $value")
-    val frWhere      = fr"where id = $uuid"
+    val frWhere      = fr"where id = $wishlistId"
 
     val q = fr"update wishlist" ++ setOpt(frSetName, frSetComment) ++ frWhere
 
@@ -104,7 +104,7 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
       .transact(xa)
       .attempt
       .map {
-        case Left(UnexpectedEnd) => Left(ApiError.notFound(uuid))
+        case Left(UnexpectedEnd) => Left(ApiError.notFound(wishlistId))
         case Left(e) =>
           logger.error("An error occurred while updating wishlist", e)
           Left(ApiError.unexpectedError)
@@ -112,13 +112,13 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
       }
   }
 
-  override def update(uuid: UUID, access: Access): F[Either[ApiError, WishlistSaved]] =
-    sql"update wishlist set access = $access where id = $uuid".update
+  override def update(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]] =
+    sql"update wishlist set access = $access where id = $wishlistId".update
       .withUniqueGeneratedKeys[WishlistSaved](wishlistColumns: _*)
       .transact(xa)
       .attempt
       .map {
-        case Left(UnexpectedEnd) => Left(ApiError.notFound(uuid))
+        case Left(UnexpectedEnd) => Left(ApiError.notFound(wishlistId))
         case Left(e) =>
           logger.error("An error occurred while updating wishlist", e)
           Left(ApiError.unexpectedError)

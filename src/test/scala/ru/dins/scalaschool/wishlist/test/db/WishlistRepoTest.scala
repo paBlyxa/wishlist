@@ -48,11 +48,11 @@ class WishlistRepoTest extends MyTestContainerForAll {
   }
 
   it should "return Unit if nothing deleted" in resetStorage { case (storage, _) =>
-    storage.remove(exampleUUID).map(_ shouldBe Right(()))
+    storage.remove(exampleWishlistId).map(_ shouldBe Right(()))
   }
 
   "get" should "return Left(Not found) if storage is empty" in resetStorage { case (storage, _) =>
-    storage.get(exampleUUID).map(_ shouldBe Left(ApiError.notFound(exampleUUID)))
+    storage.get(exampleWishlistId).map(_ shouldBe Left(ApiError.notFound(exampleWishlistId)))
   }
 
   it should "return Right(Wishlist) if storage return something" in resetStorage { case (storage, xa) =>
@@ -75,7 +75,7 @@ class WishlistRepoTest extends MyTestContainerForAll {
   }
 
   it should "return Unit if nothing deleted" in resetStorage { case (storage, _) =>
-    storage.clear(exampleUUID).map(_ shouldBe Right(()))
+    storage.clear(exampleWishlistId).map(_ shouldBe Right(()))
   }
 
   "findAll" should "return list of wishlists if storage return something" in resetStorage { case (storage, xa) =>
@@ -124,6 +124,6 @@ class WishlistRepoTest extends MyTestContainerForAll {
   }
 
   it should "return Left(Not found) if storage is empty" in resetStorage { case (storage, _) =>
-    storage.update(exampleUUID, Access.Private).map(_ shouldBe Left(ApiError.notFound(exampleUUID)))
+    storage.update(exampleWishlistId, Access.Private).map(_ shouldBe Left(ApiError.notFound(exampleWishlistId)))
   }
 }
