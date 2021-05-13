@@ -4,14 +4,12 @@ import io.circe.{Codec, Encoder}
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 
-import java.util.UUID
-
-trait ApiError
+sealed trait ApiError
 object ApiError {
 
   def unexpectedError: UnexpectedError                   = UnexpectedError(500, "Unexpected error")
-  def notFound(id: UUID): NotFound                       = NotFound(404, s"Wishlist with id=$id not found")
-  def userNotFound(id: UUID): NotFound                   = NotFound(404, s"User with id=$id not found")
+  def notFound(id: WishlistId): NotFound                 = NotFound(404, s"Wishlist with id=$id not found")
+  def userNotFound(id: UserId): NotFound                 = NotFound(404, s"User with id=$id not found")
   def userNotFound(username: String): NotFound           = NotFound(404, s"User with username=$username not found")
   def wishNotFound(id: Long): NotFound                   = NotFound(404, s"Wish with id=$id not found")
   def notFound: ApiError                                 = NotFound(404, s"Not found")

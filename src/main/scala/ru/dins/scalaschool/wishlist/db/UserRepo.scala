@@ -13,19 +13,19 @@ import doobie.util.invariant.UnexpectedEnd
 import org.postgresql.util.PSQLException
 import org.slf4j.{Logger, LoggerFactory}
 import ru.dins.scalaschool.wishlist.models._
-import ru.dins.scalaschool.wishlist.models.Models.{NewUser, User, UserOption}
+import ru.dins.scalaschool.wishlist.models.Models._
 
 import java.util.UUID
 
 trait UserRepo[F[_]] {
 
-  def getById(uuid: UUID): F[Either[ApiError, User]]
+  def getById(userId: UserId): F[Either[ApiError, User]]
 
   def getByUsername(username: String): F[Either[ApiError, User]]
 
   def save(user: NewUser): F[Either[ApiError, User]]
 
-  def update(uuid: UUID, user: UserOption): F[Either[ApiError, User]]
+  def update(userId: UserId, user: UserUpdate): F[Either[ApiError, User]]
 }
 
 case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
@@ -34,14 +34,14 @@ case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
 
   private val userColumns = List("id", "username", "email", "telegram_id")
 
-  override def getById(uuid: UUID): F[Either[ApiError, User]] =
-    sql"""select * from users where id = $uuid"""
+  override def getById(userId: UserId): F[Either[ApiError, User]] =
+    sql"""select * from users where id = $userId"""
       .query[User]
       .option
       .transact(xa)
       .map {
         case Some(user) => Right(user)
-        case None       => Left(ApiError.userNotFound(uuid))
+        case None       => Left(ApiError.userNotFound(userId))
       }
 
   override def getByUsername(username: String): F[Either[ApiError, User]] =
@@ -77,11 +77,11 @@ case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
     )
   }
 
-  override def update(uuid: UUID, user: UserOption): F[Either[ApiError, User]] = {
+  override def update(userId: UserId, user: UserUpdate): F[Either[ApiError, User]] = {
     val frSetUsername   = user.username.map(value => fr"username = $value")
     val frSetEmail      = user.email.map(value => fr"email = $value")
     val frSetTelegramId = user.telegramId.map(value => fr"telegram_id = $value")
-    val frWhere         = fr"where id = $uuid"
+    val frWhere         = fr"where id = $userId"
 
     val q = fr"update users" ++ setOpt(frSetUsername, frSetEmail, frSetTelegramId) ++ frWhere
 
@@ -95,7 +95,7 @@ case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
             case Some(username) => Left(ApiError.usernameAlreadyTaken(username))
             case None           => Left(ApiError.unexpectedError)
           }
-        case Left(UnexpectedEnd) => Left(ApiError.userNotFound(uuid))
+        case Left(UnexpectedEnd) => Left(ApiError.userNotFound(userId))
         case Left(e) =>
           logger.error("An error occurred while updating user", e)
           Left(ApiError.unexpectedError)

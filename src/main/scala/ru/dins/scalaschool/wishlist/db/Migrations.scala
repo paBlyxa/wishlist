@@ -17,12 +17,11 @@ object Migrations {
          |telegram_id TEXT,
          |PRIMARY KEY(id)
          |);
-         |create type access_type as enum ('public', 'private');
          |create table if not exists wishlist(
          |id UUID,
          |user_id UUID REFERENCES users(id),
          |name TEXT NOT NULL,
-         |access access_type NOT NULL,
+         |access TEXT DEFAULT 'public',
          |comment TEXT,
          |created_at TIMESTAMP DEFAULT current_timestamp,
          |PRIMARY KEY (id)
@@ -34,7 +33,20 @@ object Migrations {
          |link TEXT,
          |price DECIMAL(10, 2),
          |comment TEXT,
+         |status TEXT DEFAULT 'free',
          |created_at TIMESTAMP DEFAULT current_timestamp,
+         |PRIMARY KEY(id)
+         |);
+         |create table if not exists users_access(
+         |id SERIAL,
+         |user_id UUID REFERENCES users(id),
+         |wishlist_id UUID REFERENCES wishlist(id),
+         |PRIMARY KEY(id)
+         |);
+         |create table if not exists users_wish(
+         |id SERIAL,
+         |user_id UUID REFERENCES users(id),
+         |wish_id INTEGER REFERENCES wish(id),
          |PRIMARY KEY(id)
          |);
          |""".stripMargin.update

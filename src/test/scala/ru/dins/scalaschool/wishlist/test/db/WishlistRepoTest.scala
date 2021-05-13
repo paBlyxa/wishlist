@@ -2,15 +2,14 @@ package ru.dins.scalaschool.wishlist.test.db
 
 import cats.effect.IO
 import doobie.implicits._
-import doobie.postgres.implicits._
 import doobie.util.transactor.Transactor
 import org.scalatest.Assertion
 import ru.dins.scalaschool.wishlist.db.{WishlistRepo, WishlistRepoImpl}
-import ru.dins.scalaschool.wishlist.models.ApiError
-import ru.dins.scalaschool.wishlist.models.Models.{Access, Wishlist, WishlistOption}
+import ru.dins.scalaschool.wishlist.models.{Access, ApiError}
+import ru.dins.scalaschool.wishlist.models.Models._
 import ru.dins.scalaschool.wishlist.test.TestExamples._
 
-class WishlistRepoTest extends MyTestContainerForAll{
+class WishlistRepoTest extends MyTestContainerForAll {
 
   def resetStorage(test: (WishlistRepo[IO], Transactor.Aux[IO, Unit]) => IO[Assertion]): Unit =
     withContainers { container =>
@@ -26,73 +25,66 @@ class WishlistRepoTest extends MyTestContainerForAll{
       result.unsafeRunSync()
     }
 
-  private val insertUser =
-    sql"insert into users values ($exampleUserId, 'username', 'email', '@username')".update.run
-  private val insertWishlist =
-    sql"insert into wishlist values ($exampleUUID, $exampleUserId, 'wishlist', ${Access.public}, 'comment', $exampleLDT)".update.run
-  private val insertWish =
-    sql"insert into wish (wishlist_id, name, link, price, comment) values ($exampleUUID, 'present', 'some link', '123.45', 'comment')".update
-      .withUniqueGeneratedKeys[Long]("id")
-
   "save" should "return Right(Wishlist) if save successful" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      sample <- storage.save(exampleNewWishlist)
+      _      <- insertUser(exampleUserId).transact(xa)
+      sample <- storage.save(exampleUserId, exampleNewWishlist)
     } yield sample should matchPattern {
-      case Right(Wishlist(_, _, "My wishlist", Access.public, Some("For my birthday"), _)) =>
+      case Right(WishlistSaved(_, _, "My wishlist", Access.Public, Some("For my birthday"), _)) =>
     }
   }
 
   it should "return Left(NotFound) if user with userId not found" in resetStorage { case (storage, _) =>
-    storage.save(exampleNewWishlist).map(_ shouldBe Left(ApiError.userNotFound(exampleUserId)))
+    storage.save(exampleUserId, exampleNewWishlist).map(_ shouldBe Left(ApiError.userNotFound(exampleUserId)))
   }
 
   "delete" should "return Unit if note deleted successful" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      result <- storage.remove(exampleUUID)
-      sample <- storage.get(exampleUUID)
-    } yield (result, sample) shouldBe (Right(()), Left(ApiError.notFound(exampleUUID)))
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      result     <- storage.remove(wishlistId)
+      sample     <- storage.get(wishlistId)
+    } yield (result, sample) shouldBe (Right(()), Left(ApiError.notFound(wishlistId)))
   }
 
   it should "return Unit if nothing deleted" in resetStorage { case (storage, _) =>
-    storage.remove(exampleUUID).map(_ shouldBe Right(()))
+    storage.remove(exampleWishlistId).map(_ shouldBe Right(()))
   }
 
   "get" should "return Left(Not found) if storage is empty" in resetStorage { case (storage, _) =>
-    storage.get(exampleUUID).map(_ shouldBe Left(ApiError.notFound(exampleUUID)))
+    storage.get(exampleWishlistId).map(_ shouldBe Left(ApiError.notFound(exampleWishlistId)))
   }
 
   it should "return Right(Wishlist) if storage return something" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      sample <- storage.get(exampleUUID)
-    } yield sample should matchPattern { case Right(Wishlist(_, _, "wishlist", Access.public, Some("comment"), _)) =>
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      sample     <- storage.get(wishlistId)
+    } yield sample should matchPattern {
+      case Right(WishlistSaved(_, _, "wishlist", Access.Public, Some("comment"), _)) =>
     }
   }
 
   "clear" should "return Unit if note deleted successful" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      id     <- insertWish.transact(xa)
-      result <- storage.clear(exampleUUID)
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      _          <- insertWish(wishlistId).transact(xa)
+      result     <- storage.clear(wishlistId)
     } yield result shouldBe Right(())
   }
 
   it should "return Unit if nothing deleted" in resetStorage { case (storage, _) =>
-    storage.clear(exampleUUID).map(_ shouldBe Right(()))
+    storage.clear(exampleWishlistId).map(_ shouldBe Right(()))
   }
 
   "findAll" should "return list of wishlists if storage return something" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
+      userId <- insertUser().transact(xa)
+      _      <- insertWishlist(userId = userId).transact(xa)
       result <- storage.findAll
     } yield result should matchPattern {
-      case Right(List(Wishlist(_, _, "wishlist", Access.public, Some("comment"), _))) =>
+      case Right(List(WishlistSaved(_, _, "wishlist", Access.Public, Some("comment"), _))) =>
     }
   }
 
@@ -103,33 +95,35 @@ class WishlistRepoTest extends MyTestContainerForAll{
   "update" should "return Wishlist with modified parameters if update successful" in resetStorage {
     case (storage, xa) =>
       for {
-        _      <- insertUser.transact(xa)
-        _      <- insertWishlist.transact(xa)
-        result <- storage.update(exampleUUID, exampleWishlistOption)
+        userId     <- insertUser().transact(xa)
+        wishlistId <- insertWishlist(userId = userId).transact(xa)
+        result     <- storage.update(wishlistId, exampleWishlistOption)
       } yield result should matchPattern {
-        case Right(Wishlist(_, _, "new name", Access.public, Some("new comment"), _)) =>
+        case Right(WishlistSaved(_, _, "new name", Access.Public, Some("new comment"), _)) =>
       }
   }
 
   it should "return Wishlist with modified name if update successful" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      result <- storage.update(exampleUUID, WishlistOption(Some("new name"), None))
-    } yield result should matchPattern { case Right(Wishlist(_, _, "new name", Access.public, Some("comment"), _)) =>
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      result <- storage.update(wishlistId, WishlistUpdate(Some("new name"), None))
+    } yield result should matchPattern {
+      case Right(WishlistSaved(_, _, "new name", Access.Public, Some("comment"), _)) =>
     }
   }
 
   "update" should "return Wishlist with modified access if update successful" in resetStorage { case (storage, xa) =>
     for {
-      _      <- insertUser.transact(xa)
-      _      <- insertWishlist.transact(xa)
-      result <- storage.update(exampleUUID, Access.privat)
-    } yield result should matchPattern { case Right(Wishlist(_, _, "wishlist", Access.privat, Some("comment"), _)) =>
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      result <- storage.update(wishlistId, Access.Private)
+    } yield result should matchPattern {
+      case Right(WishlistSaved(_, _, "wishlist", Access.Private, Some("comment"), _)) =>
     }
   }
 
   it should "return Left(Not found) if storage is empty" in resetStorage { case (storage, _) =>
-    storage.update(exampleUUID, Access.privat).map(_ shouldBe Left(ApiError.notFound(exampleUUID)))
+    storage.update(exampleWishlistId, Access.Private).map(_ shouldBe Left(ApiError.notFound(exampleWishlistId)))
   }
 }

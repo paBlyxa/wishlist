@@ -4,11 +4,17 @@ import cats.effect.{ContextShift, IO}
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import com.dimafeng.testcontainers.scalatest.TestContainerForAll
 import doobie.Transactor
+import doobie.implicits.toSqlInterpolator
+import doobie.postgres.implicits._
+import doobie.util.transactor.Transactor.Aux
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import ru.dins.scalaschool.wishlist.db.Migrations
+import ru.dins.scalaschool.wishlist.models.{Access, UserId, WishlistId}
+import ru.dins.scalaschool.wishlist.test.TestExamples._
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 trait MyTestContainerForAll extends AnyFlatSpec with Matchers with TestContainerForAll with MockFactory {
@@ -17,7 +23,7 @@ trait MyTestContainerForAll extends AnyFlatSpec with Matchers with TestContainer
 
   override val containerDef: PostgreSQLContainer.Def = PostgreSQLContainer.Def()
 
-  def createTransactor(container: Containers) =
+  def createTransactor(container: Containers): Aux[IO, Unit] =
     Transactor.fromDriverManager[IO](
       driver = "org.postgresql.Driver",
       url = container.jdbcUrl,
@@ -31,4 +37,34 @@ trait MyTestContainerForAll extends AnyFlatSpec with Matchers with TestContainer
     Migrations.migrate(xa).unsafeRunSync()
     container
   }
+
+  def insertUser(
+      userId: UserId = UserId(UUID.randomUUID()),
+      username: String = "username",
+      email: String = "email",
+      telegramId: String = "@username",
+  ): doobie.ConnectionIO[UserId] =
+    sql"insert into users values ($userId, $username, $email, $telegramId)".update.withUniqueGeneratedKeys[UserId]("id")
+
+  def insertWishlist(
+      wishlistId: WishlistId = WishlistId(UUID.randomUUID()),
+      userId: UserId,
+      name: String = "wishlist",
+      access: Access = Access.Public,
+      comment: String = "comment",
+  ): doobie.ConnectionIO[WishlistId] =
+    sql"insert into wishlist values ($wishlistId, $userId, $name, $access, $comment, $exampleLDT)".update
+      .withUniqueGeneratedKeys[WishlistId]("id")
+
+  def insertWish(
+      wishlistId: WishlistId = exampleWishlistId,
+      name: String = "present",
+      link: String = "some link",
+      price: BigDecimal = BigDecimal(123.45),
+      comment: String = "comment",
+  ): doobie.ConnectionIO[Long] =
+    sql"insert into wish (wishlist_id, name, link, price, comment) values ($wishlistId, $name, $link, $price, $comment)".update
+      .withUniqueGeneratedKeys[Long]("id")
+
+  def genUUID: IO[UUID] = IO.delay(UUID.randomUUID())
 }

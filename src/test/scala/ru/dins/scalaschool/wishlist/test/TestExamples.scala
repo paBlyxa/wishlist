@@ -2,60 +2,93 @@ package ru.dins.scalaschool.wishlist.test
 
 import io.circe.literal.JsonStringContext
 import ru.dins.scalaschool.wishlist.models.Models._
+import ru.dins.scalaschool.wishlist.models.{Access, UserId, WishStatus, WishlistId}
+
 import java.time.LocalDateTime
-import java.util.UUID
 
 object TestExamples {
-  val exampleStrUUID            = "00000000-0000-0000-0000-000000000000"
-  val exampleStrUserId          = "11111111-2222-3333-4444-000000000000"
-  val exampleUUID: UUID         = UUID.fromString(exampleStrUUID)
-  val exampleUserId: UUID       = UUID.fromString(exampleStrUserId)
-  val exampleNewUser: NewUser   = NewUser("username", Some("email"), Some("@username"))
-  val exampleUser: User         = User(exampleUserId, "username", Some("email"), Some("@username"))
-  val exampleLDT: LocalDateTime = LocalDateTime.MIN
+  val exampleStrUUID                = "00000000-0000-0000-0000-000000000000"
+  val exampleStrUserId              = "11111111-2222-3333-4444-000000000000"
+  val exampleWishlistId: WishlistId = WishlistId(exampleStrUUID)
+  val exampleUserId: UserId         = UserId(exampleStrUserId)
+  val exampleNewUser: NewUser       = NewUser("username", Some("email"), Some("@username"))
+  val exampleUser: User             = User(exampleUserId, "username", Some("email"), Some("@username"))
+  val exampleLDT: LocalDateTime     = LocalDateTime.MIN
   val exampleNewWishlist: NewWishlist =
-    NewWishlist(exampleUserId, "My wishlist", Some(Access.public), Some("For my birthday"))
+    NewWishlist("My wishlist", Some(Access.Public), Some("For my birthday"))
 
   val exampleNewWish: NewWish = NewWish("present", Some("some link"), Some(12.34), Some("comment"))
-  val exampleWish: Wish       = Wish(1, exampleUUID, "present", Some("some link"), Some(12.34), Some("comment"), exampleLDT)
+  val exampleWish: Wish =
+    Wish(1, exampleWishlistId, "present", Some("some link"), Some(12.34), Some("comment"), WishStatus.Free, exampleLDT)
   val exampleWishlist: Wishlist =
     Wishlist(
-      exampleUUID,
+      exampleWishlistId,
       exampleUserId,
       "My wishlist",
-      Access.public,
+      Access.Public,
+      Some("For my birthday"),
+      exampleLDT,
+      List(exampleWish),
+    )
+  val exampleWishlistEmpty: Wishlist =
+    Wishlist(
+      exampleWishlistId,
+      exampleUserId,
+      "My wishlist",
+      Access.Public,
+      Some("For my birthday"),
+      exampleLDT,
+      List(),
+    )
+  val exampleWishlistSaved: WishlistSaved =
+    WishlistSaved(
+      exampleWishlistId,
+      exampleUserId,
+      "My wishlist",
+      Access.Public,
       Some("For my birthday"),
       exampleLDT,
     )
-  val exampleWishlistOption: WishlistOption = WishlistOption(Some("new name"), Some("new comment"))
-  val exampleWishOption: WishOption =
-    WishOption(Some("new present"), Some("new link"), Some(1000.00), Some("modified comment"))
+  val exampleWishlistOption: WishlistUpdate = WishlistUpdate(Some("new name"), Some("new comment"))
+  val exampleWishOption: WishUpdate =
+    WishUpdate(Some("new present"), Some("new link"), Some(1000.00), Some("modified comment"))
 
   val jsonNewUser =
     json""" { "username": "username", "email": "email", "telegramId": "@username" } """
   val jsonUser =
     json""" { "id": $exampleUserId, "username": "username", "email": "email", "telegramId": "@username" } """
   val jsonNewWishlist =
-    json""" { "userId": $exampleUserId, "name": "My wishlist", "access": "public", "comment": "For my birthday" } """
+    json""" { "name": "My wishlist", "access": "public", "comment": "For my birthday" } """
   val jsonNewWish        = json""" { "name": "present", "link": "some link", "price": "12.34", "comment": "comment"} """
   val jsonWish           = json""" { 
           "id": 1, 
-          "wishlistId": $exampleUUID,
+          "wishlistId": $exampleWishlistId,
           "name": "present", 
           "link": "some link", 
           "price": 12.34,
           "comment": "comment",
+          "status": "free",
           "createdAt": $exampleLDT
       }"""
+  val jsonWishes         = json""" [$jsonWish] """
   val jsonWishlist       = json""" { 
-          "id": $exampleUUID, 
+          "id": $exampleWishlistId, 
+          "userId": $exampleUserId, 
+          "name": "My wishlist", 
+          "access": "public", 
+          "comment": "For my birthday", 
+          "createdAt": $exampleLDT,
+          "wishes" : [$jsonWish]
+          } """
+  val jsonWishlistSaved  = json""" { 
+          "id": $exampleWishlistId, 
           "userId": $exampleUserId, 
           "name": "My wishlist", 
           "access": "public", 
           "comment": "For my birthday", 
           "createdAt": $exampleLDT
           } """
-  val jsonListOfWishlist = json""" [$jsonWishlist]"""
+  val jsonListOfWishlist = json""" [$jsonWishlistSaved]"""
   val jsonWishlistOption = json"""{ "name": "new name", "comment": "new comment" }"""
   val jsonWishOption =
     json""" { "name": "new present", "link": "new link", "price": 1000.00, "comment": "modified comment" } """
