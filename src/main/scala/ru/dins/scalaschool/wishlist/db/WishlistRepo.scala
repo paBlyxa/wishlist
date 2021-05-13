@@ -31,7 +31,7 @@ trait WishlistRepo[F[_]] {
 
   def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]]
 
-  def update(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]]
+  def updateAccess(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]]
 }
 
 case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F] {
@@ -112,7 +112,7 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
       }
   }
 
-  override def update(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]] =
+  override def updateAccess(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]] =
     sql"update wishlist set access = $access where id = $wishlistId".update
       .withUniqueGeneratedKeys[WishlistSaved](wishlistColumns: _*)
       .transact(xa)

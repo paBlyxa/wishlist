@@ -30,4 +30,10 @@ trait Service[F[_]] {
   def modifyAccess(userId: UserId, wishlistId: WishlistId, access: Access): F[Either[ApiError, Wishlist]]
 
   def getWishes(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, List[Wish]]]
+
+  def updateWishStatus(userId: UserId, wishlistId: WishlistId, wishId: Long, wishStatus: WishStatus): F[Either[ApiError, Wish]]
+
+  def provideAccess(userOwnerId: UserId, wishlistId: WishlistId, userId: UserId): F[Either[ApiError, Unit]]
+
+  def forbidAccess(userOwnerId: UserId, wishlistId: WishlistId, userId: UserId): F[Either[ApiError, Unit]]
 }

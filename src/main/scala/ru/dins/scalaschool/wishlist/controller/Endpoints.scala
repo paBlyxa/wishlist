@@ -145,4 +145,25 @@ object Endpoints {
       .description("Get all wishes in wishlist")
       .in("wishes")
       .out(jsonBody[List[Wish]].description("List of wishes").example(List(exampleWish)))
+
+  val updateWishStatus: Endpoint[(UserId, WishlistId, Long, WishStatus), ApiError, Wish, Any] =
+    baseWithPathId.patch
+      .description("Update wish's status")
+      .in("wish" / path[Long].description("Wish's id").example(1))
+      .in(query[WishStatus]("status").description("New wish's status").example(WishStatus.Booked))
+      .out(jsonBody[Wish].description("Wish with updated status").example(exampleWish))
+
+  val provideAccess: Endpoint[(UserId, WishlistId, UserId), ApiError, Unit, Any] =
+    baseWithPathId.put
+      .description("Provide access to wishlist for user")
+      .in("access")
+      .in(query[UserId]("userId").description("User's id to provide access"))
+      .out(jsonBody[Unit].description("Empty json body"))
+
+  val forbidAccess: Endpoint[(UserId, WishlistId, UserId), ApiError, Unit, Any] =
+    baseWithPathId.delete
+      .description("Forbid access to wishlist for user")
+      .in("access")
+      .in(query[UserId]("userId").description("User's id to forbid access"))
+      .out(jsonBody[Unit].description("Empty json body"))
 }

@@ -41,13 +41,15 @@ object Migrations {
          |id SERIAL,
          |user_id UUID REFERENCES users(id),
          |wishlist_id UUID REFERENCES wishlist(id),
-         |PRIMARY KEY(id)
+         |PRIMARY KEY(id),
+         |UNIQUE(user_id, wishlist_id)
          |);
          |create table if not exists users_wish(
          |id SERIAL,
          |user_id UUID REFERENCES users(id),
          |wish_id INTEGER REFERENCES wish(id),
-         |PRIMARY KEY(id)
+         |PRIMARY KEY(id),
+         |UNIQUE(user_id, wish_id)
          |);
          |""".stripMargin.update
 

@@ -15,16 +15,19 @@ object ApiError {
   def notFound: ApiError                                 = NotFound(404, s"Not found")
   def badRequest: BadRequest                             = BadRequest(400, "Malformed message body: Invalid JSON")
   def usernameAlreadyTaken(username: String): LogicError = LogicError(422, s"Username '$username' already taken")
+  def forbidden: Forbidden                               = Forbidden(403, s"Forbidden")
 
   implicit val codecNotFound: Codec[NotFound]               = deriveCodec
   implicit val codecLogicError: Codec[LogicError]           = deriveCodec
   implicit val codecBadRequest: Codec[BadRequest]           = deriveCodec
   implicit val codecUnexpectedError: Codec[UnexpectedError] = deriveCodec
+  implicit val codecForbidden: Codec[Forbidden]             = deriveCodec
   implicit val encodeApiError: Encoder[ApiError] = Encoder.instance {
     case err @ UnexpectedError(_, _) => err.asJson
     case err @ NotFound(_, _)        => err.asJson
     case err @ LogicError(_, _)      => err.asJson
     case err @ BadRequest(_, _)      => err.asJson
+    case err @ Forbidden(_, _)       => err.asJson
   }
 }
 
@@ -32,3 +35,4 @@ case class UnexpectedError(code: Int, message: String) extends ApiError
 case class NotFound(code: Int, message: String)        extends ApiError
 case class LogicError(code: Int, message: String)      extends ApiError
 case class BadRequest(code: Int, message: String)      extends ApiError
+case class Forbidden(code: Int, message: String)       extends ApiError

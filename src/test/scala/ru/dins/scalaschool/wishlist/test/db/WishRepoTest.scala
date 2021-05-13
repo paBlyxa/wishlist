@@ -25,7 +25,7 @@ class WishRepoTest extends MyTestContainerForAll {
       result.unsafeRunSync()
     }
 
-  "saveWish" should "return Right(Wish) if save successful" in resetStorage { case (storage, xa) =>
+  "save" should "return Right(Wish) if save successful" in resetStorage { case (storage, xa) =>
     for {
       userId     <- insertUser().transact(xa)
       wishlistId <- insertWishlist(userId = userId).transact(xa)
@@ -39,7 +39,7 @@ class WishRepoTest extends MyTestContainerForAll {
     storage.save(exampleWishlistId, exampleNewWish).map(_ shouldBe Left(ApiError.notFound(exampleWishlistId)))
   }
 
-  "removeWish" should "return Unit if note deleted successful" in resetStorage { case (storage, xa) =>
+  "remove" should "return Unit if note deleted successful" in resetStorage { case (storage, xa) =>
     for {
       userId     <- insertUser().transact(xa)
       wishlistId <- insertWishlist(userId = userId).transact(xa)
@@ -53,7 +53,7 @@ class WishRepoTest extends MyTestContainerForAll {
     storage.remove(1).map(_ shouldBe Right(()))
   }
 
-  "getWish" should "return Left(Not found) if storage is empty" in resetStorage { case (storage, _) =>
+  "get" should "return Left(Not found) if storage is empty" in resetStorage { case (storage, _) =>
     storage.get(1).map(_ shouldBe Left(ApiError.wishNotFound(1)))
   }
 
@@ -68,16 +68,15 @@ class WishRepoTest extends MyTestContainerForAll {
     }
   }
 
-  "updateWish" should "return Wish with modified parameters if update successful" in resetStorage {
-    case (storage, xa) =>
-      for {
-        userId     <- insertUser().transact(xa)
-        wishlistId <- insertWishlist(userId = userId).transact(xa)
-        id         <- insertWish(wishlistId).transact(xa)
-        result     <- storage.update(id, exampleWishOption)
-      } yield result should matchPattern {
-        case Right(Wish(_, _, "new present", Some("new link"), _, Some("modified comment"), WishStatus.Free, _)) =>
-      }
+  "update" should "return Wish with modified parameters if update successful" in resetStorage { case (storage, xa) =>
+    for {
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      id         <- insertWish(wishlistId).transact(xa)
+      result     <- storage.update(id, exampleWishOption)
+    } yield result should matchPattern {
+      case Right(Wish(_, _, "new present", Some("new link"), _, Some("modified comment"), WishStatus.Free, _)) =>
+    }
   }
 
   it should "return Wish with modified comment if update successful" in resetStorage { case (storage, xa) =>
@@ -119,5 +118,57 @@ class WishRepoTest extends MyTestContainerForAll {
       wishlist2Id <- insertWishlist(userId = userId).transact(xa)
       result      <- storage.getAllByWishlistId(wishlist2Id)
     } yield result should matchPattern { case Right(List()) => }
+  }
+
+  "updateStatus" should "return Wish with updated status 'booked' if update successful" in resetStorage {
+    case (storage, xa) =>
+      for {
+        userId     <- insertUser().transact(xa)
+        wishlistId <- insertWishlist(userId = userId).transact(xa)
+        wishId     <- insertWish(wishlistId, "present", "some link", BigDecimal(123.45)).transact(xa)
+        wish       <- storage.updateStatus(userId, wishId, WishStatus.Booked)
+        users <- sql"select user_id from users_wish where wish_id = $wishId"
+          .query[UserId]
+          .stream
+          .compile
+          .toList
+          .transact(xa)
+      } yield (wish, users) should matchPattern {
+        case (Right(Wish(_, _, "present", Some("some link"), _, _, WishStatus.Booked, _)), List(_)) =>
+      }
+  }
+  it should "return Wish with updated status 'free' if update successful" in resetStorage { case (storage, xa) =>
+    for {
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      wishId     <- insertWish(wishlistId, "present", "some link", BigDecimal(123.45)).transact(xa)
+      _          <- storage.updateStatus(userId, wishId, WishStatus.Booked)
+      wish       <- storage.updateStatus(userId, wishId, WishStatus.Free)
+      users <- sql"select user_id from users_wish where wish_id = $wishId"
+        .query[UserId]
+        .stream
+        .compile
+        .toList
+        .transact(xa)
+    } yield (wish, users) should matchPattern {
+      case (Right(Wish(_, _, "present", Some("some link"), _, _, WishStatus.Free, _)), List()) =>
+    }
+  }
+  it should "return Wish with updated status 'got' if update successful" in resetStorage { case (storage, xa) =>
+    for {
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      wishId     <- insertWish(wishlistId, "present", "some link", BigDecimal(123.45)).transact(xa)
+      _          <- storage.updateStatus(userId, wishId, WishStatus.Booked)
+      wish       <- storage.updateStatus(userId, wishId, WishStatus.Got)
+      users <- sql"select user_id from users_wish where wish_id = $wishId"
+        .query[UserId]
+        .stream
+        .compile
+        .toList
+        .transact(xa)
+    } yield (wish, users) should matchPattern {
+      case (Right(Wish(_, _, "present", Some("some link"), _, _, WishStatus.Got, _)), List(_)) =>
+    }
   }
 }

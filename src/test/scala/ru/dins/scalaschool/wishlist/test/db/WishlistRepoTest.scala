@@ -117,13 +117,13 @@ class WishlistRepoTest extends MyTestContainerForAll {
     for {
       userId     <- insertUser().transact(xa)
       wishlistId <- insertWishlist(userId = userId).transact(xa)
-      result <- storage.update(wishlistId, Access.Private)
+      result <- storage.updateAccess(wishlistId, Access.Private)
     } yield result should matchPattern {
       case Right(WishlistSaved(_, _, "wishlist", Access.Private, Some("comment"), _)) =>
     }
   }
 
   it should "return Left(Not found) if storage is empty" in resetStorage { case (storage, _) =>
-    storage.update(exampleWishlistId, Access.Private).map(_ shouldBe Left(ApiError.notFound(exampleWishlistId)))
+    storage.updateAccess(exampleWishlistId, Access.Private).map(_ shouldBe Left(ApiError.notFound(exampleWishlistId)))
   }
 }
