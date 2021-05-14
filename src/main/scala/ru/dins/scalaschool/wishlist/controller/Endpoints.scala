@@ -14,6 +14,7 @@ object Endpoints {
 
   private val errorOut =
     endpoint
+      .in("api")
       .errorOut(
         oneOf[ApiError](
           oneOfMapping(
