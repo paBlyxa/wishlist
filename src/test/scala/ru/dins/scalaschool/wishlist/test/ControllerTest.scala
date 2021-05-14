@@ -24,8 +24,8 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
   implicit val timer: Timer[IO]               = IO.timer(ec)
 
-  private val mockService         = mock[Service[IO]]
-  private val controller          = Controller(mockService)
+  private val mockService = mock[Service[IO]]
+  private val controller  = Controller(mockService)
 
   def run(
       method: Method,
@@ -320,7 +320,7 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in GET /wishlist/list
   "GET /wishlist/list" should "return JSON wishlist's list if storage return something" in {
-    (() => mockService.list).expects().returns(IO.pure(Right(List(exampleWishlistSaved))))
+    (mockService.list _).expects(exampleUserId, filterEmpty).returns(IO.pure(Right(List(exampleWishlistSaved))))
 
     val (status, body) = run(Method.GET, s"/$exampleUserId/wishlist/list")
 
@@ -329,7 +329,7 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   }
   // Unexpected error in GET /wishlist/{uuid}/list
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    (() => mockService.list).expects().returns(IO.raiseError(new RuntimeException("Ooops")))
+    (mockService.list _).expects(exampleUserId, filterEmpty).returns(IO.raiseError(new RuntimeException("Ooops")))
 
     val (status, body) = run(Method.GET, s"/$exampleUserId/wishlist/list")
 
@@ -619,7 +619,12 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   it should "return properly filled error model and HTTP code 400 if body can't be parsed" in {
 
     val (status, body) =
-      run(Method.DELETE, path = s"/$exampleUserId/wishlist/$exampleWishlistId/access", None, Some(Map("userId" -> "user")))
+      run(
+        Method.DELETE,
+        path = s"/$exampleUserId/wishlist/$exampleWishlistId/access",
+        None,
+        Some(Map("userId" -> "user")),
+      )
 
     status shouldBe Status.BadRequest
     body shouldBe jsonBadRequest

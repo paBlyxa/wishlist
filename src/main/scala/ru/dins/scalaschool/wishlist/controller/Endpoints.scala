@@ -102,11 +102,18 @@ object Endpoints {
       .description("Get wishlist")
       .out(jsonBody[Wishlist].description("Wishlist").example(exampleWishlist))
 
-  //TODO: add filter and order
-  val getWishlists: Endpoint[UserId, ApiError, List[WishlistSaved], Any] =
+  val getWishlists: Endpoint[(UserId, FilterList), ApiError, List[WishlistSaved], Any] =
     base.get
       .description("Get wishlists")
       .in("list")
+      .in(
+        query[Option[String]]("username")
+          .description("filter by username")
+          .and(query[Option[String]]("name").description("filter by wishlist's name"))
+          .and(query[Option[WishlistOrder]]("orderBy").description("order by, default by createdAt"))
+          .and(query[Option[OrderDir]]("orderDir").description("order dir, default ASC"))
+          .mapTo(FilterList),
+      )
       .out(
         jsonBody[List[WishlistSaved]]
           .description("List of wishlists with matching filter")

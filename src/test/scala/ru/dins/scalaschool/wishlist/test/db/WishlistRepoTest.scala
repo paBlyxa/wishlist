@@ -5,7 +5,7 @@ import doobie.implicits._
 import doobie.util.transactor.Transactor
 import org.scalatest.Assertion
 import ru.dins.scalaschool.wishlist.db.{WishlistRepo, WishlistRepoImpl}
-import ru.dins.scalaschool.wishlist.models.{Access, ApiError}
+import ru.dins.scalaschool.wishlist.models.{Access, ApiError, FilterList, OrderDir, WishlistOrder}
 import ru.dins.scalaschool.wishlist.models.Models._
 import ru.dins.scalaschool.wishlist.test.TestExamples._
 
@@ -82,14 +82,66 @@ class WishlistRepoTest extends MyTestContainerForAll {
     for {
       userId <- insertUser().transact(xa)
       _      <- insertWishlist(userId = userId).transact(xa)
-      result <- storage.findAll
+      result <- storage.findAll(userId, filterEmpty)
     } yield result should matchPattern {
       case Right(List(WishlistSaved(_, _, "wishlist", Access.Public, Some("comment"), _))) =>
     }
   }
 
-  it should "return empty list if none match" in resetStorage { case (storage, _) =>
-    storage.findAll.map(_ shouldBe Right(List()))
+  it should "return empty list if storage empty" in resetStorage { case (storage, _) =>
+    storage.findAll(exampleUserId, filterEmpty).map(_ shouldBe Right(List()))
+  }
+
+  it should "return list of wishlists with matching filter and order by name" in resetStorage { case (storage, xa) =>
+    for {
+      userId        <- insertUser().transact(xa)
+      anotherUserId <- insertUser(username = "anotherUser").transact(xa)
+      _             <- insertWishlist(userId = userId, name = "birthday").transact(xa)
+      _             <- insertWishlist(userId = anotherUserId, name = "Zero wishlist").transact(xa)
+      _             <- insertWishlist(userId = anotherUserId, name = "Private wishlist", access = Access.Private).transact(xa)
+      wishlistId <- insertWishlist(userId = anotherUserId, name = "Private wishlist shared", access = Access.Private)
+        .transact(xa)
+      _ <- sql"""insert into users_access (user_id, wishlist_id) values ($userId, $wishlistId)""".update.run
+        .transact(xa)
+      result <- storage.findAll(
+        userId,
+        FilterList(Some("user"), Some("wish"), Some(WishlistOrder.Name), Some(OrderDir.Desc)),
+      )
+    } yield result should matchPattern {
+      case Right(
+            List(
+              WishlistSaved(_, _, "Zero wishlist", Access.Public, Some("comment"), _),
+              WishlistSaved(_, _, "Private wishlist shared", Access.Private, Some("comment"), _),
+            ),
+          ) =>
+    }
+  }
+
+  it should "return list of wishlists with matching filter and order by username" in resetStorage {
+    case (storage, xa) =>
+      for {
+        userId         <- insertUser(username = "myname").transact(xa)
+        anotherUser1Id <- insertUser(username = "anotherUser1").transact(xa)
+        anotherUser2Id <- insertUser(username = "anotherUser2").transact(xa)
+        _              <- insertWishlist(userId = userId, name = "birthday").transact(xa)
+        _              <- insertWishlist(userId = anotherUser1Id, name = "Zero wishlist").transact(xa)
+        _              <- insertWishlist(userId = anotherUser2Id, name = "Private wishlist", access = Access.Private).transact(xa)
+        wishlistId <- insertWishlist(userId = anotherUser2Id, name = "Private wishlist shared", access = Access.Private)
+          .transact(xa)
+        _ <- sql"""insert into users_access (user_id, wishlist_id) values ($userId, $wishlistId)""".update.run
+          .transact(xa)
+        result <- storage.findAll(
+          userId,
+          FilterList(Some("another"), None, Some(WishlistOrder.Username), None),
+        )
+      } yield result should matchPattern {
+        case Right(
+              List(
+                WishlistSaved(_, _, "Zero wishlist", Access.Public, Some("comment"), _),
+                WishlistSaved(_, _, "Private wishlist shared", Access.Private, Some("comment"), _),
+              ),
+            ) =>
+      }
   }
 
   "update" should "return Wishlist with modified parameters if update successful" in resetStorage {
@@ -107,7 +159,7 @@ class WishlistRepoTest extends MyTestContainerForAll {
     for {
       userId     <- insertUser().transact(xa)
       wishlistId <- insertWishlist(userId = userId).transact(xa)
-      result <- storage.update(wishlistId, WishlistUpdate(Some("new name"), None))
+      result     <- storage.update(wishlistId, WishlistUpdate(Some("new name"), None))
     } yield result should matchPattern {
       case Right(WishlistSaved(_, _, "new name", Access.Public, Some("comment"), _)) =>
     }
@@ -117,7 +169,7 @@ class WishlistRepoTest extends MyTestContainerForAll {
     for {
       userId     <- insertUser().transact(xa)
       wishlistId <- insertWishlist(userId = userId).transact(xa)
-      result <- storage.updateAccess(wishlistId, Access.Private)
+      result     <- storage.updateAccess(wishlistId, Access.Private)
     } yield result should matchPattern {
       case Right(WishlistSaved(_, _, "wishlist", Access.Private, Some("comment"), _)) =>
     }

@@ -67,7 +67,7 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
 
   private val getWishlistRoute = Http4sServerInterpreter.toRoutes(getWishlist)((service.get _).tupled)
 
-  private val getWishlistsRoute = Http4sServerInterpreter.toRoutes(getWishlists)(_ => service.list)
+  private val getWishlistsRoute = Http4sServerInterpreter.toRoutes(getWishlists)((service.list _).tupled)
 
   private val modifyWishlistRoute = Http4sServerInterpreter.toRoutes(modifyWishlist)((service.modify _).tupled)
 
@@ -119,7 +119,7 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
       getWishes,
       updateWishStatus,
       provideAccess,
-      forbidAccess
+      forbidAccess,
     ),
     "Wishlist API",
     "1.0",

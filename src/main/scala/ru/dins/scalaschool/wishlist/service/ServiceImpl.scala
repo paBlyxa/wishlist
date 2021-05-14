@@ -49,7 +49,10 @@ case class ServiceImpl[F[_]: Sync](
       case Right(value) => isWishlistShared(userId, value)
     }
 
-  override def list: F[Either[ApiError, List[WishlistSaved]]] = wishlistRepo.findAll
+  override def list(
+      userId: UserId,
+      filter: FilterList,
+  ): F[Either[ApiError, List[WishlistSaved]]] = wishlistRepo.findAll(userId, filter)
 
   override def modify(userId: UserId, wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, Wishlist]] =
     if (wishlist.isEmpty) {
@@ -82,20 +85,21 @@ case class ServiceImpl[F[_]: Sync](
       .get(wishId)
       .withReadAccess(userId, wishlistId)
       .flatMap {
-        case e@Left(_) => F.pure(e)
-        case Right(wish) => wish.status match {
-          case WishStatus.Free => wishRepo.updateStatus(userId, wishId, wishStatus)
-          case WishStatus.Shared =>
-            wishRepo
-              .getUserBooked(wishId)
-              .map(list => list.contains(userId) && list.tail.isEmpty)
-              .ifM(wishRepo.updateStatus(userId, wishId, wishStatus), F.pure(Left(ApiError.forbidden)))
-          case WishStatus.Booked | WishStatus.Got =>
-            wishRepo
-              .getUserBooked(wishId)
-              .map(_.contains(userId))
-              .ifM(wishRepo.updateStatus(userId, wishId, wishStatus), F.pure(Left(ApiError.forbidden)))
-        }
+        case e @ Left(_) => F.pure(e)
+        case Right(wish) =>
+          wish.status match {
+            case WishStatus.Free => wishRepo.updateStatus(userId, wishId, wishStatus)
+            case WishStatus.Shared =>
+              wishRepo
+                .getUserBooked(wishId)
+                .map(list => list.contains(userId) && list.tail.isEmpty)
+                .ifM(wishRepo.updateStatus(userId, wishId, wishStatus), F.pure(Left(ApiError.forbidden)))
+            case WishStatus.Booked | WishStatus.Got =>
+              wishRepo
+                .getUserBooked(wishId)
+                .map(_.contains(userId))
+                .ifM(wishRepo.updateStatus(userId, wishId, wishStatus), F.pure(Left(ApiError.forbidden)))
+          }
       }
 
   override def provideAccess(userOwnerId: UserId, wishlistId: WishlistId, userId: UserId): F[Either[ApiError, Unit]] =
