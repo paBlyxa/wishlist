@@ -92,7 +92,7 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
     val usernameFilter = username
       .map(username => s"%$username%")
       .map(username => fr"u.username ILIKE $username")
-      //.map(username => fr"w.user_id IN (select id from users us where us.username ILIKE $username)")
+    //.map(username => fr"w.user_id IN (select id from users us where us.username ILIKE $username)")
     val nameFilter = name.map(name => s"%$name%").map(name => fr"w.name ILIKE $name")
     val frOrderBy = orderBy match {
       case Some(WishlistOrder.Username) => fr"order by u.username"
