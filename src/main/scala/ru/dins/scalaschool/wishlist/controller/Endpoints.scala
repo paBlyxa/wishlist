@@ -30,6 +30,10 @@ object Endpoints {
             jsonBody[LogicError].description("Logic error").example(ApiError.usernameAlreadyTaken("username")),
           ),
           oneOfMapping(
+            StatusCode.Forbidden,
+            jsonBody[Forbidden].description("Forbidden").example(ApiError.forbidden),
+          ),
+          oneOfMapping(
             StatusCode.InternalServerError,
             jsonBody[UnexpectedError].description("Unexpected error").example(ApiError.unexpectedError),
           ),
@@ -173,5 +177,19 @@ object Endpoints {
       .description("Forbid access to wishlist for user")
       .in("access")
       .in(query[UserId]("userId").description("User's id to forbid access"))
+      .out(jsonBody[Unit].description("Empty json body"))
+
+  val addUserToShareWish: Endpoint[(UserId, WishlistId, Long), ApiError, Unit, Any] =
+    baseWithPathId.put
+      .description("Add user to share wish")
+      .in("wish" / path[Long].description("Wish's id").example(1))
+      .in("user")
+      .out(jsonBody[Unit].description("Empty json body"))
+
+  val removeUserToShareWish: Endpoint[(UserId, WishlistId, Long), ApiError, Unit, Any] =
+    baseWithPathId.delete
+      .description("Remove user from share wish")
+      .in("wish" / path[Long].description("Wish's id").example(1))
+      .in("user")
       .out(jsonBody[Unit].description("Empty json body"))
 }

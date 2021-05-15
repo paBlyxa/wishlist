@@ -649,24 +649,24 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   }
 
   // Success case in PUT /wishlist/{uuid}/wish/{id}/user
-//  "PUT /wishlist/{uuid}/wish/{id}/user" should "return Unit if storage save successful" in {
-//    (mockService.addUserToShareWish _).expects(exampleUserId, exampleWishlistId, 1).returns(IO.pure(Right(())))
-//
-//    val (status, body) =
-//      run(Method.PUT, path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/wish/1/user")
-//
-//    status shouldBe Status.Ok
-//    body shouldBe jsonEmpty
-//  }
-//
+  "PUT /wishlist/{uuid}/wish/{id}/user" should "return Unit if storage save successful" in {
+    (mockService.addUserToShareWish _).expects(exampleUserId, exampleWishlistId, 1).returns(IO.pure(Right(())))
+
+    val (status, body) =
+      run(Method.PUT, path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/wish/1/user")
+
+    status shouldBe Status.Ok
+    body shouldBe jsonEmpty
+  }
+
 //  // Success case in DELETE /wishlist/{uuid}/wish/{id}/user
-//  "DELETE /wishlist/{uuid}/wish/{id}/user" should "return Unit if storage delete successful" in {
-//    (mockService.removeUserToShareWish _).expects(exampleUserId, exampleWishlistId, 1).returns(IO.pure(Right(())))
-//
-//    val (status, body) =
-//      run(Method.DELETE, path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/wish/1/user")
-//
-//    status shouldBe Status.Ok
-//    body shouldBe jsonEmpty
-//  }
+  "DELETE /wishlist/{uuid}/wish/{id}/user" should "return Unit if storage delete successful" in {
+    (mockService.removeUserToShareWish _).expects(exampleUserId, exampleWishlistId, 1).returns(IO.pure(Right(())))
+
+    val (status, body) =
+      run(Method.DELETE, path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/wish/1/user")
+
+    status shouldBe Status.Ok
+    body shouldBe jsonEmpty
+  }
 }

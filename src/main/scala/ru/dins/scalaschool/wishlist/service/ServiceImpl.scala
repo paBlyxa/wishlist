@@ -74,7 +74,6 @@ case class ServiceImpl[F[_]: Sync](
   override def getWishes(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, List[Wish]]] =
     wishRepo.getAllByWishlistId(wishlistId).withReadAccess(userId, wishlistId)
 
-  // TODO forbid access if another user booked
   override def updateWishStatus(
       userId: UserId,
       wishlistId: WishlistId,
@@ -91,12 +90,12 @@ case class ServiceImpl[F[_]: Sync](
             case WishStatus.Free => wishRepo.updateStatus(userId, wishId, wishStatus)
             case WishStatus.Shared =>
               wishRepo
-                .getUserBooked(wishId)
+                .getUsersBooked(wishId)
                 .map(list => list.contains(userId) && list.tail.isEmpty)
                 .ifM(wishRepo.updateStatus(userId, wishId, wishStatus), F.pure(Left(ApiError.forbidden)))
             case WishStatus.Booked | WishStatus.Got =>
               wishRepo
-                .getUserBooked(wishId)
+                .getUsersBooked(wishId)
                 .map(_.contains(userId))
                 .ifM(wishRepo.updateStatus(userId, wishId, wishStatus), F.pure(Left(ApiError.forbidden)))
           }
@@ -108,6 +107,20 @@ case class ServiceImpl[F[_]: Sync](
   override def forbidAccess(userOwnerId: UserId, wishlistId: WishlistId, userId: UserId): F[Either[ApiError, Unit]] =
     userRepo.removeUserAccess(userId, wishlistId).withWriteAccess(userOwnerId, wishlistId)
 
+  override def addUserToShareWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]] =
+    wishRepo
+      .get(wishId)
+      .withReadAccess(userId, wishlistId)
+      .flatMap {
+        case Left(err) => F.pure(Left(err))
+        case Right(wish) =>
+          if (wish.status == WishStatus.Shared) wishRepo.addUserToShare(userId, wishId)
+          else F.pure(Left(ApiError.forbidden))
+      }
+
+  override def removeUserToShareWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]] =
+    wishRepo.removeUserToShare(userId, wishId).withReadAccess(userId, wishlistId)
+
   implicit def injectWishes(f: F[Either[ApiError, WishlistSaved]]): F[Either[ApiError, Wishlist]] =
     f.flatMap(
       _.fold(
@@ -118,14 +131,6 @@ case class ServiceImpl[F[_]: Sync](
             .map(_.fold(left => Left(left), wishes => Right(Wishlist(wishlistSaved, wishes)))),
       ),
     )
-
-//  private def hasUserModifyAccess(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, Unit]] =
-//    wishlistRepo.get(wishlistId).map(_.filterOrElse(_.userId == userId, ApiError.forbidden).void)
-//      .map {
-//      case Right(wishlist) if wishlist.userId == userId => Right(()).filterOrElse()
-//      case e @ Left(_)                                  => e.map(_ => ())
-//      case _                                            => Left(ApiError.forbidden)
-//    }
 
   implicit class SecurityOps[T](f: => F[Either[ApiError, T]]) {
     def withWriteAccess(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, T]] =

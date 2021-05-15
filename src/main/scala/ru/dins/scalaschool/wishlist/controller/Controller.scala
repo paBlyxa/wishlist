@@ -84,6 +84,12 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
 
   private val forbidAccessRoute = Http4sServerInterpreter.toRoutes(forbidAccess)((service.forbidAccess _).tupled)
 
+  private val addUserToShareWishRoute =
+    Http4sServerInterpreter.toRoutes(addUserToShareWish)((service.addUserToShareWish _).tupled)
+
+  private val removeUserToShareWishRoute =
+    Http4sServerInterpreter.toRoutes(removeUserToShareWish)((service.removeUserToShareWish _).tupled)
+
   def routes: HttpRoutes[F] =
     registerUserRoute <+>
       loginUserRoute <+>
@@ -100,7 +106,9 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
       getWishesRoute <+>
       updateWishStatusRoute <+>
       provideAccessRoute <+>
-      forbidAccessRoute
+      forbidAccessRoute <+>
+      addUserToShareWishRoute <+>
+      removeUserToShareWishRoute
 
   val docs: OpenAPI = OpenAPIDocsInterpreter.toOpenAPI(
     List(
@@ -120,6 +128,8 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
       updateWishStatus,
       provideAccess,
       forbidAccess,
+      addUserToShareWish,
+      removeUserToShareWish,
     ),
     "Wishlist API",
     "1.0",
