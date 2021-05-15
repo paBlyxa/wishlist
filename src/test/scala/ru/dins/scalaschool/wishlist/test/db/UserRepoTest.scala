@@ -86,4 +86,23 @@ class UserRepoTest extends MyTestContainerForAll {
       .map(_ shouldBe Left(ApiError.userNotFound(exampleUserId)))
   }
 
+  "saveUserAccess" should "return Right(Unit) if save successful" in resetStorage { case (storage, xa) =>
+    for {
+      userOwnerId <- insertUser().transact(xa)
+      userId      <- insertUser(username = "testUser").transact(xa)
+      wishlistId  <- insertWishlist(userId = userOwnerId).transact(xa)
+      result      <- storage.saveUserAccess(userId, wishlistId)
+    } yield result shouldBe Right(())
+  }
+
+  "removeUserAccess" should "return Right(Unit) if remove successful" in resetStorage { case (storage, xa) =>
+    for {
+      userOwnerId <- insertUser().transact(xa)
+      userId      <- insertUser(username = "testUser").transact(xa)
+      wishlistId  <- insertWishlist(userId = userOwnerId).transact(xa)
+      _           <- storage.saveUserAccess(userId, wishlistId)
+      result      <- storage.removeUserAccess(userId, wishlistId)
+    } yield result shouldBe Right(())
+  }
+
 }

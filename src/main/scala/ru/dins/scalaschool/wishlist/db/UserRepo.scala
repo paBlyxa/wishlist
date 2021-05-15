@@ -26,6 +26,12 @@ trait UserRepo[F[_]] {
   def save(user: NewUser): F[Either[ApiError, User]]
 
   def update(userId: UserId, user: UserUpdate): F[Either[ApiError, User]]
+
+  def saveUserAccess(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, Unit]]
+
+  def removeUserAccess(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, Unit]]
+
+  def hasUserAccess(userId: UserId, wishlistId: WishlistId): F[Option[Long]]
 }
 
 case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
@@ -103,6 +109,37 @@ case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
       }
 
   }
+
+  override def saveUserAccess(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, Unit]] =
+    sql"""insert into users_access (user_id, wishlist_id) values ($userId, $wishlistId)""".update.run
+      .transact(xa)
+      .attemptSql
+      .map {
+        case Left(e: PSQLException) if e.getSQLState.equals(sqlstate.class23.FOREIGN_KEY_VIOLATION.value) =>
+          logger.debug("An error occurred", e)
+          Left(ApiError.userNotFound(userId))
+        case Left(e) =>
+          logger.error("An error occurred while saving user's access", e)
+          Left(ApiError.unexpectedError)
+        case _ => Right(())
+      }
+
+  override def removeUserAccess(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, Unit]] =
+    sql"""delete from users_access where user_id = $userId and wishlist_id = $wishlistId""".update.run
+      .transact(xa)
+      .attemptSql
+      .map {
+        case Left(e: PSQLException) if e.getSQLState.equals(sqlstate.class23.FOREIGN_KEY_VIOLATION.value) =>
+          logger.debug("An error occurred", e)
+          Left(ApiError.userNotFound(userId))
+        case Left(e) =>
+          logger.error("An error occurred while delete user's access", e)
+          Left(ApiError.unexpectedError)
+        case _ => Right(())
+      }
+
+  override def hasUserAccess(userId: UserId, wishlistId: WishlistId): F[Option[Long]] =
+    sql"select from users_access where user_id = $userId and wishlist_id = $wishlistId".query[Long].option.transact(xa)
 
   private def generateUUID = Sync[F].delay(UUID.randomUUID())
 }

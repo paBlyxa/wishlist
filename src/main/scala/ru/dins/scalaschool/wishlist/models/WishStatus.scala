@@ -2,8 +2,9 @@ package ru.dins.scalaschool.wishlist.models
 
 import enumeratum.EnumEntry.Lowercase
 import enumeratum._
+import sttp.tapir.codec.enumeratum.TapirCodecEnumeratum
 
-sealed trait WishStatus extends EnumEntry with Lowercase
+sealed trait WishStatus extends EnumEntry with Lowercase with TapirCodecEnumeratum
 
 case object WishStatus extends Enum[WishStatus] with CirceEnum[WishStatus] with DoobieEnum[WishStatus] {
 

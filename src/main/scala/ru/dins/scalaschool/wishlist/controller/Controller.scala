@@ -67,7 +67,7 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
 
   private val getWishlistRoute = Http4sServerInterpreter.toRoutes(getWishlist)((service.get _).tupled)
 
-  private val getWishlistsRoute = Http4sServerInterpreter.toRoutes(getWishlists)(_ => service.list)
+  private val getWishlistsRoute = Http4sServerInterpreter.toRoutes(getWishlists)((service.list _).tupled)
 
   private val modifyWishlistRoute = Http4sServerInterpreter.toRoutes(modifyWishlist)((service.modify _).tupled)
 
@@ -76,6 +76,13 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
   private val modifyAccessRoute = Http4sServerInterpreter.toRoutes(modifyAccess)((service.modifyAccess _).tupled)
 
   private val getWishesRoute = Http4sServerInterpreter.toRoutes(getWishes)((service.getWishes _).tupled)
+
+  private val updateWishStatusRoute =
+    Http4sServerInterpreter.toRoutes(updateWishStatus)((service.updateWishStatus _).tupled)
+
+  private val provideAccessRoute = Http4sServerInterpreter.toRoutes(provideAccess)((service.provideAccess _).tupled)
+
+  private val forbidAccessRoute = Http4sServerInterpreter.toRoutes(forbidAccess)((service.forbidAccess _).tupled)
 
   def routes: HttpRoutes[F] =
     registerUserRoute <+>
@@ -90,7 +97,10 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
       modifyWishlistRoute <+>
       modifyWishRoute <+>
       modifyAccessRoute <+>
-      getWishesRoute
+      getWishesRoute <+>
+      updateWishStatusRoute <+>
+      provideAccessRoute <+>
+      forbidAccessRoute
 
   val docs: OpenAPI = OpenAPIDocsInterpreter.toOpenAPI(
     List(
@@ -107,6 +117,9 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
       modifyWish,
       modifyAccess,
       getWishes,
+      updateWishStatus,
+      provideAccess,
+      forbidAccess,
     ),
     "Wishlist API",
     "1.0",

@@ -5,7 +5,7 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.applicativeError._
 import doobie.implicits._
-import doobie.util.fragments.setOpt
+import doobie.util.fragments.{setOpt, whereAndOpt}
 import doobie.postgres.implicits._
 import doobie.postgres.sqlstate
 import doobie.util.invariant.UnexpectedEnd
@@ -27,11 +27,14 @@ trait WishlistRepo[F[_]] {
 
   def clear(wishlistId: WishlistId): F[Either[ApiError, Unit]]
 
-  def findAll: F[Either[ApiError, List[WishlistSaved]]]
+  def findAll(
+      userId: UserId,
+      filter: FilterList,
+  ): F[Either[ApiError, List[WishlistSaved]]]
 
   def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]]
 
-  def update(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]]
+  def updateAccess(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]]
 }
 
 case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F] {
@@ -79,18 +82,52 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
   override def clear(wishlistId: WishlistId): F[Either[ApiError, Unit]] =
     sql"delete from wish where wishlist_id = $wishlistId".update.run.transact(xa).attempt.map(_ => Right(()))
 
-  override def findAll: F[Either[ApiError, List[WishlistSaved]]] =
-    sql"select * from wishlist"
-      .query[WishlistSaved]
+  override def findAll(
+      userId: UserId,
+      filter: FilterList,
+  ): F[Either[ApiError, List[WishlistSaved]]] = {
+
+    import filter._
+
+    val usernameFilter = username
+      .map(username => s"%$username%")
+      .map(username => fr"u.username ILIKE $username")
+      //.map(username => fr"w.user_id IN (select id from users us where us.username ILIKE $username)")
+    val nameFilter = name.map(name => s"%$name%").map(name => fr"w.name ILIKE $name")
+    val frOrderBy = orderBy match {
+      case Some(WishlistOrder.Username) => fr"order by u.username"
+      case Some(WishlistOrder.Name)     => fr"order by w.name"
+      case _                            => fr"order by w.created_at"
+    }
+    val frOrderDir = orderDir match {
+      case Some(OrderDir.Desc) => fr"desc"
+      case _                   => fr"asc"
+    }
+    val accessControl = Some(
+      fr"(w.access = 'public' OR w.user_id = $userId OR w.id IN (select wishlist_id from users_access ua where ua.user_id = $userId))",
+    )
+
+    val q =
+      fr"select w.id, w.user_id, w.name, w.access, w.comment, w.created_at, u.username from wishlist w " ++
+        fr"left join users u ON w.user_id = u.id" ++ whereAndOpt(
+          usernameFilter,
+          nameFilter,
+          accessControl,
+        ) ++ frOrderBy ++ frOrderDir
+
+    q.query[WishlistSaved]
       .stream
       .compile
       .toList
       .transact(xa)
       .attemptSql
       .map {
-        case Left(_)     => Left(ApiError.unexpectedError)
+        case Left(e) =>
+          logger.error("An error occurred while looking for wishlist", e)
+          Left(ApiError.unexpectedError)
         case Right(list) => Right(list)
       }
+  }
 
   override def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]] = {
     val frSetName    = wishlist.name.map(value => fr"name = $value")
@@ -112,7 +149,7 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
       }
   }
 
-  override def update(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]] =
+  override def updateAccess(wishlistId: WishlistId, access: Access): F[Either[ApiError, WishlistSaved]] =
     sql"update wishlist set access = $access where id = $wishlistId".update
       .withUniqueGeneratedKeys[WishlistSaved](wishlistColumns: _*)
       .transact(xa)

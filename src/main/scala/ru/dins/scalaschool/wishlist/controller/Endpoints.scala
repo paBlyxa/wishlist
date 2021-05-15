@@ -14,6 +14,7 @@ object Endpoints {
 
   private val errorOut =
     endpoint
+      .in("api")
       .errorOut(
         oneOf[ApiError](
           oneOfMapping(
@@ -102,11 +103,18 @@ object Endpoints {
       .description("Get wishlist")
       .out(jsonBody[Wishlist].description("Wishlist").example(exampleWishlist))
 
-  //TODO: add filter and order
-  val getWishlists: Endpoint[UserId, ApiError, List[WishlistSaved], Any] =
+  val getWishlists: Endpoint[(UserId, FilterList), ApiError, List[WishlistSaved], Any] =
     base.get
       .description("Get wishlists")
       .in("list")
+      .in(
+        query[Option[String]]("username")
+          .description("filter by username")
+          .and(query[Option[String]]("name").description("filter by wishlist's name"))
+          .and(query[Option[WishlistOrder]]("orderBy").description("order by, default by createdAt"))
+          .and(query[Option[OrderDir]]("orderDir").description("order dir, default ASC"))
+          .mapTo(FilterList),
+      )
       .out(
         jsonBody[List[WishlistSaved]]
           .description("List of wishlists with matching filter")
@@ -145,4 +153,25 @@ object Endpoints {
       .description("Get all wishes in wishlist")
       .in("wishes")
       .out(jsonBody[List[Wish]].description("List of wishes").example(List(exampleWish)))
+
+  val updateWishStatus: Endpoint[(UserId, WishlistId, Long, WishStatus), ApiError, Wish, Any] =
+    baseWithPathId.patch
+      .description("Update wish's status")
+      .in("wish" / path[Long].description("Wish's id").example(1))
+      .in(query[WishStatus]("status").description("New wish's status").example(WishStatus.Booked))
+      .out(jsonBody[Wish].description("Wish with updated status").example(exampleWish))
+
+  val provideAccess: Endpoint[(UserId, WishlistId, UserId), ApiError, Unit, Any] =
+    baseWithPathId.put
+      .description("Provide access to wishlist for user")
+      .in("access")
+      .in(query[UserId]("userId").description("User's id to provide access"))
+      .out(jsonBody[Unit].description("Empty json body"))
+
+  val forbidAccess: Endpoint[(UserId, WishlistId, UserId), ApiError, Unit, Any] =
+    baseWithPathId.delete
+      .description("Forbid access to wishlist for user")
+      .in("access")
+      .in(query[UserId]("userId").description("User's id to forbid access"))
+      .out(jsonBody[Unit].description("Empty json body"))
 }

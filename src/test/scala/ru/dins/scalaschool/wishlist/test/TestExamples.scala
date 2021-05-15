@@ -2,7 +2,7 @@ package ru.dins.scalaschool.wishlist.test
 
 import io.circe.literal.JsonStringContext
 import ru.dins.scalaschool.wishlist.models.Models._
-import ru.dins.scalaschool.wishlist.models.{Access, UserId, WishStatus, WishlistId}
+import ru.dins.scalaschool.wishlist.models.{Access, FilterList, UserId, WishStatus, WishlistId}
 
 import java.time.LocalDateTime
 
@@ -103,4 +103,6 @@ object TestExamples {
   val jsonWishNotFound        = json""" { "code": 404, "message": $messageWishNotFound } """
   val jsonUnexpectedError     = json""" { "code": 500, "message": "Unexpected error" }"""
   val jsonEmpty               = json""" {} """
+
+  val filterEmpty: FilterList = FilterList(None, None, None, None)
 }

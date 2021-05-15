@@ -25,6 +25,10 @@ trait WishRepo[F[_]] {
   def remove(id: Long): F[Either[ApiError, Unit]]
 
   def update(id: Long, wish: WishUpdate): F[Either[ApiError, Wish]]
+
+  def updateStatus(userId: UserId, id: Long, wishStatus: WishStatus): F[Either[ApiError, Wish]]
+
+  def getUserBooked(wishId: Long): F[List[UserId]]
 }
 
 case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
@@ -97,4 +101,31 @@ case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
       }
   }
 
+  override def updateStatus(userId: UserId, wishId: Long, wishStatus: WishStatus): F[Either[ApiError, Wish]] =
+    (for {
+      wish <- setStatus(wishId, wishStatus)
+      _    <- if (wishStatus == WishStatus.Free) removeUsersWish(wishId) else insertUsersWish(userId, wishId)
+    } yield wish)
+      .transact(xa)
+      .attempt
+      .map {
+        case Left(UnexpectedEnd) => Left(ApiError.wishNotFound(wishId))
+        case Left(e) =>
+          logger.error("An error occurred while updating wish", e)
+          Left(ApiError.unexpectedError)
+        case Right(wish) => Right(wish)
+      }
+
+  private def setStatus(id: Long, wishStatus: WishStatus): doobie.ConnectionIO[Wish] =
+    sql"update wish set status = $wishStatus where id = $id".update
+      .withUniqueGeneratedKeys[Wish](wishColumns: _*)
+
+  private def insertUsersWish(userId: UserId, wishId: Long): doobie.ConnectionIO[Int] =
+    sql"insert into users_wish (user_id, wish_id) values ($userId, $wishId) ON CONFLICT DO NOTHING".update.run
+
+  private def removeUsersWish(wishId: Long): doobie.ConnectionIO[Int] =
+    sql"delete from users_wish where wish_id = $wishId".update.run
+
+  override def getUserBooked(wishId: Long): F[List[UserId]] =
+    sql"select user_id from users_wish where wish_id = $wishId".query[UserId].stream.compile.toList.transact(xa)
 }

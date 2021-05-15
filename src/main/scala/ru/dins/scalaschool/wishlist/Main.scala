@@ -36,7 +36,7 @@ object Main extends IOApp {
     val controller   = Controller(service)
     val swagger      = new SwaggerHttp4s(controller.docs.toYaml)
     val httpApp = Router(
-      "/api"     -> controller.routes,
+      "/"        -> controller.routes,
       "/swagger" -> swagger.routes,
     ).orNotFound
     val server = BlazeServerBuilder[IO](executionContext)
