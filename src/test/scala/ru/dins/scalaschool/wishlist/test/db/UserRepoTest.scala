@@ -114,8 +114,7 @@ class UserRepoTest extends MyTestContainerForAll {
       _           <- storage.saveUserAccess("testUser1", wishlistId)
       _           <- storage.saveUserAccess("testUser2", wishlistId)
       result      <- storage.getSubscribers(wishlistId)
-    } yield result should matchPattern {
-      case Right(List(NewUser("testUser1", _, _), NewUser("testUser2", _, _))) =>
+    } yield result should matchPattern { case Right(List(NewUser("testUser1", _, _), NewUser("testUser2", _, _))) =>
     }
   }
 
