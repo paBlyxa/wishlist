@@ -6,7 +6,7 @@ import doobie.util.transactor.Transactor
 import org.scalatest.Assertion
 import ru.dins.scalaschool.wishlist.db.{UserRepo, UserRepoImpl}
 import ru.dins.scalaschool.wishlist.models.ApiError
-import ru.dins.scalaschool.wishlist.models.Models.{User, UserUpdate}
+import ru.dins.scalaschool.wishlist.models.Models.{NewUser, User, UserUpdate}
 import ru.dins.scalaschool.wishlist.test.TestExamples._
 
 class UserRepoTest extends MyTestContainerForAll {
@@ -89,20 +89,34 @@ class UserRepoTest extends MyTestContainerForAll {
   "saveUserAccess" should "return Right(Unit) if save successful" in resetStorage { case (storage, xa) =>
     for {
       userOwnerId <- insertUser().transact(xa)
-      userId      <- insertUser(username = "testUser").transact(xa)
+      _           <- insertUser(username = "testUser").transact(xa)
       wishlistId  <- insertWishlist(userId = userOwnerId).transact(xa)
-      result      <- storage.saveUserAccess(userId, wishlistId)
+      result      <- storage.saveUserAccess("testUser", wishlistId)
     } yield result shouldBe Right(())
   }
 
   "removeUserAccess" should "return Right(Unit) if remove successful" in resetStorage { case (storage, xa) =>
     for {
       userOwnerId <- insertUser().transact(xa)
-      userId      <- insertUser(username = "testUser").transact(xa)
+      _           <- insertUser(username = "testUser").transact(xa)
       wishlistId  <- insertWishlist(userId = userOwnerId).transact(xa)
-      _           <- storage.saveUserAccess(userId, wishlistId)
-      result      <- storage.removeUserAccess(userId, wishlistId)
+      _           <- storage.saveUserAccess("testUser", wishlistId)
+      result      <- storage.removeUserAccess("testUser", wishlistId)
     } yield result shouldBe Right(())
+  }
+
+  "getSubscribers" should "return list of users if exists" in resetStorage { case (storage, xa) =>
+    for {
+      userOwnerId <- insertUser().transact(xa)
+      _           <- insertUser(username = "testUser1").transact(xa)
+      _           <- insertUser(username = "testUser2").transact(xa)
+      wishlistId  <- insertWishlist(userId = userOwnerId).transact(xa)
+      _           <- storage.saveUserAccess("testUser1", wishlistId)
+      _           <- storage.saveUserAccess("testUser2", wishlistId)
+      result      <- storage.getSubscribers(wishlistId)
+    } yield result should matchPattern {
+      case Right(List(NewUser("testUser1", _, _), NewUser("testUser2", _, _))) =>
+    }
   }
 
 }

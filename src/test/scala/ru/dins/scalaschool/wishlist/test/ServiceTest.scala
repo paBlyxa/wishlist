@@ -446,36 +446,34 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
   }
 
   "provideAccess" should "return Unit if storage save users_access successful" in {
-    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
     inSequence {
       (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
-      (userRepo.saveUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(Right(())))
+      (userRepo.saveUserAccess _).expects("username", exampleWishlistId).returns(IO.pure(Right(())))
     }
-    service.provideAccess(exampleUserId, exampleWishlistId, anotherUserId).unsafeRunSync() shouldBe Right(())
+    service.provideAccess(exampleUserId, exampleWishlistId, "username").unsafeRunSync() shouldBe Right(())
   }
   it should "return Forbidden if user hasn't access to that wishlist" in {
     val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
     (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
 
     service
-      .provideAccess(anotherUserId, exampleWishlistId, exampleUserId)
+      .provideAccess(anotherUserId, exampleWishlistId, "username")
       .unsafeRunSync() shouldBe ApiError.forbidden.asLeft
   }
 
   "forbidAccess" should "return Unit if storage remove users_access successful" in {
-    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
     inSequence {
       (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
-      (userRepo.removeUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(Right(())))
+      (userRepo.removeUserAccess _).expects("username", exampleWishlistId).returns(IO.pure(Right(())))
     }
-    service.forbidAccess(exampleUserId, exampleWishlistId, anotherUserId).unsafeRunSync() shouldBe Right(())
+    service.forbidAccess(exampleUserId, exampleWishlistId, "username").unsafeRunSync() shouldBe Right(())
   }
   it should "return Forbidden if user hasn't access to that wishlist" in {
     val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
     (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
 
     service
-      .forbidAccess(anotherUserId, exampleWishlistId, exampleUserId)
+      .forbidAccess(anotherUserId, exampleWishlistId, "username")
       .unsafeRunSync() shouldBe ApiError.forbidden.asLeft
   }
 

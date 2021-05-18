@@ -31,6 +31,9 @@ case class ServiceImpl[F[_]: Sync](
   override def addWish(userId: UserId, wishlistId: WishlistId, wish: NewWish): F[Either[ApiError, Wish]] =
     wishRepo.save(wishlistId, wish).withWriteAccess(userId, wishlistId)
 
+  override def getWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Wish]] =
+    wishRepo.get(wishId).withReadAccess(userId, wishlistId)
+
   override def removeWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]] =
     wishRepo.remove(wishId).withWriteAccess(userId, wishlistId)
 
@@ -52,7 +55,7 @@ case class ServiceImpl[F[_]: Sync](
   override def list(
       userId: UserId,
       filter: FilterList,
-  ): F[Either[ApiError, List[WishlistSaved]]] = wishlistRepo.findAll(userId, filter)
+  ): F[Either[ApiError, List[WishlistWeb]]] = wishlistRepo.findAll(userId, filter)
 
   override def modify(userId: UserId, wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, Wishlist]] =
     if (wishlist.isEmpty) {
@@ -101,11 +104,14 @@ case class ServiceImpl[F[_]: Sync](
           }
       }
 
-  override def provideAccess(userOwnerId: UserId, wishlistId: WishlistId, userId: UserId): F[Either[ApiError, Unit]] =
-    userRepo.saveUserAccess(userId, wishlistId).withWriteAccess(userOwnerId, wishlistId)
+  override def provideAccess(userOwnerId: UserId, wishlistId: WishlistId, username: String): F[Either[ApiError, Unit]] =
+    userRepo.saveUserAccess(username, wishlistId).withWriteAccess(userOwnerId, wishlistId)
 
-  override def forbidAccess(userOwnerId: UserId, wishlistId: WishlistId, userId: UserId): F[Either[ApiError, Unit]] =
-    userRepo.removeUserAccess(userId, wishlistId).withWriteAccess(userOwnerId, wishlistId)
+  override def forbidAccess(userOwnerId: UserId, wishlistId: WishlistId, username: String): F[Either[ApiError, Unit]] =
+    userRepo.removeUserAccess(username, wishlistId).withWriteAccess(userOwnerId, wishlistId)
+
+  override def getSubscribers(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, List[NewUser]]] =
+    userRepo.getSubscribers(wishlistId).withReadAccess(userId, wishlistId)
 
   override def addUserToShareWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]] =
     wishRepo

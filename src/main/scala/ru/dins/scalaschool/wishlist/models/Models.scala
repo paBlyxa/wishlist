@@ -48,6 +48,14 @@ object Models {
       wishes: List[Wish],
   )
 
+  case class WishlistWeb(
+      id: WishlistId,
+      username: String,
+      name: String,
+      access: Access,
+      comment: Option[String],
+  )
+
   object Wishlist {
     def apply(wishlistSaved: WishlistSaved, wishes: List[Wish]): Wishlist = {
       import wishlistSaved._
@@ -55,7 +63,7 @@ object Models {
     }
   }
 
-  case class NewWishlist(name: String, access: Option[Access], comment: Option[String])
+  case class NewWishlist(name: String, access: Option[Access] = Some(Access.Public), comment: Option[String])
   case class WishlistUpdate(name: Option[String], comment: Option[String]) {
     lazy val isEmpty: Boolean = name.isEmpty && comment.isEmpty
   }
@@ -77,5 +85,6 @@ object Models {
   implicit val codecNewWishlist: Codec[NewWishlist]       = deriveCodec
   implicit val codecWishlistUpdate: Codec[WishlistUpdate] = deriveCodec
   implicit val codecWishUpdate: Codec[WishUpdate]         = deriveCodec
+  implicit val codecWishlistWeb: Codec[WishlistWeb]       = deriveCodec
 
 }

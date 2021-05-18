@@ -60,7 +60,14 @@ object Examples {
       WishStatus.Free,
       LocalDateTime.now(),
     )
-
+  val exampleWishlistWeb: WishlistWeb =
+    WishlistWeb(
+      exampleWishlistId,
+      "username",
+      "My wishlist",
+      Access.Public,
+      Some("For my birthday"),
+    )
   val exampleUser: User =
     User(exampleUserID, "username", Some("address@mail.com"), Some("@telegramId"))
 }

@@ -49,6 +49,14 @@ object TestExamples {
       Some("For my birthday"),
       exampleLDT,
     )
+  val exampleWishlistWeb: WishlistWeb =
+    WishlistWeb(
+      exampleWishlistId,
+      "username",
+      "My wishlist",
+      Access.Public,
+      Some("For my birthday"),
+    )
   val exampleWishlistOption: WishlistUpdate = WishlistUpdate(Some("new name"), Some("new comment"))
   val exampleWishOption: WishUpdate =
     WishUpdate(Some("new present"), Some("new link"), Some(1000.00), Some("modified comment"))
@@ -80,15 +88,14 @@ object TestExamples {
           "createdAt": $exampleLDT,
           "wishes" : [$jsonWish]
           } """
-  val jsonWishlistSaved  = json""" { 
+  val jsonWishlistWeb    = json""" { 
           "id": $exampleWishlistId, 
-          "userId": $exampleUserId, 
+          "username": "username", 
           "name": "My wishlist", 
           "access": "public", 
-          "comment": "For my birthday", 
-          "createdAt": $exampleLDT
+          "comment": "For my birthday"
           } """
-  val jsonListOfWishlist = json""" [$jsonWishlistSaved]"""
+  val jsonListOfWishlist = json""" [$jsonWishlistWeb]"""
   val jsonWishlistOption = json"""{ "name": "new name", "comment": "new comment" }"""
   val jsonWishOption =
     json""" { "name": "new present", "link": "new link", "price": 1000.00, "comment": "modified comment" } """

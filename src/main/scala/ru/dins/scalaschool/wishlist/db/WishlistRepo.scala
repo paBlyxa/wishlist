@@ -30,7 +30,7 @@ trait WishlistRepo[F[_]] {
   def findAll(
       userId: UserId,
       filter: FilterList,
-  ): F[Either[ApiError, List[WishlistSaved]]]
+  ): F[Either[ApiError, List[WishlistWeb]]]
 
   def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]]
 
@@ -85,7 +85,7 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
   override def findAll(
       userId: UserId,
       filter: FilterList,
-  ): F[Either[ApiError, List[WishlistSaved]]] = {
+  ): F[Either[ApiError, List[WishlistWeb]]] = {
 
     import filter._
 
@@ -108,14 +108,14 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
     )
 
     val q =
-      fr"select w.id, w.user_id, w.name, w.access, w.comment, w.created_at, u.username from wishlist w " ++
+      fr"select w.id, u.username, w.name, w.access, w.comment from wishlist w " ++
         fr"left join users u ON w.user_id = u.id" ++ whereAndOpt(
           usernameFilter,
           nameFilter,
           accessControl,
         ) ++ frOrderBy ++ frOrderDir
 
-    q.query[WishlistSaved]
+    q.query[WishlistWeb]
       .stream
       .compile
       .toList

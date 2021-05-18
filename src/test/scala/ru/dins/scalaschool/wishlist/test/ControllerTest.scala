@@ -15,7 +15,6 @@ import ru.dins.scalaschool.wishlist.models._
 import ru.dins.scalaschool.wishlist.service.Service
 import ru.dins.scalaschool.wishlist.test.TestExamples._
 
-import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
@@ -320,7 +319,7 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
   // Success case in GET /wishlist/list
   "GET /wishlist/list" should "return JSON wishlist's list if storage return something" in {
-    (mockService.list _).expects(exampleUserId, filterEmpty).returns(IO.pure(Right(List(exampleWishlistSaved))))
+    (mockService.list _).expects(exampleUserId, filterEmpty).returns(IO.pure(Right(List(exampleWishlistWeb))))
 
     val (status, body) = run(Method.GET, s"/api/$exampleUserId/wishlist/list")
 
@@ -550,23 +549,22 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
     body shouldBe jsonWish
   }
 
-  // Success case in PUT /wishlist/{uuid}/access?user=<uuid>
+  // Success case in PUT /wishlist/{uuid}/access?username=<String>
   "PUT /wishlist/{uuid}/access?user=<uuid>" should "return unit if save successful" in {
-    val newUserId = UserId(UUID.randomUUID())
-    (mockService.provideAccess _).expects(exampleUserId, exampleWishlistId, newUserId).returns(IO.pure(Right(())))
+    (mockService.provideAccess _).expects(exampleUserId, exampleWishlistId, "user").returns(IO.pure(Right(())))
 
     val (status, body) =
       run(
         Method.PUT,
         path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/access",
         None,
-        Some(Map("userId" -> newUserId.toString)),
+        Some(Map("username" -> "user")),
       )
 
     status shouldBe Status.Ok
     body shouldBe jsonEmpty
   }
-  // Bad request in PUT /wishlist/{uuid}/access?user=<uuid>
+  // Bad request in PUT /wishlist/{uuid}/access?username=<String>
   it should "return properly filled error model and HTTP code 400 if body can't be parsed" in {
 
     val (status, body) =
@@ -580,11 +578,10 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
     status shouldBe Status.BadRequest
     body shouldBe jsonBadRequest
   }
-  // Unexpected error in PUT /wishlist/{uuid}/access?user=<uuid>
+  // Unexpected error in PUT /wishlist/{uuid}/access?username=<String>
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    val newUserId = UserId(UUID.randomUUID())
     (mockService.provideAccess _)
-      .expects(exampleUserId, exampleWishlistId, newUserId)
+      .expects(exampleUserId, exampleWishlistId, "user")
       .returns(IO.raiseError(new RuntimeException("Ooops")))
 
     val (status, body) =
@@ -592,30 +589,29 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
         Method.PUT,
         path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/access",
         None,
-        Some(Map("userId" -> newUserId.toString)),
+        Some(Map("username" -> "user")),
       )
 
     status shouldBe Status.InternalServerError
     body shouldBe jsonUnexpectedError
   }
 
-  // Success case in DELETE /wishlist/{uuid}/access?user=<uuid>
+  // Success case in DELETE /wishlist/{uuid}/access?username=<String>
   "DELETE /wishlist/{uuid}/access?user=<uuid>" should "return unit if delete successful" in {
-    val newUserId = UserId(UUID.randomUUID())
-    (mockService.forbidAccess _).expects(exampleUserId, exampleWishlistId, newUserId).returns(IO.pure(Right(())))
+    (mockService.forbidAccess _).expects(exampleUserId, exampleWishlistId, "user").returns(IO.pure(Right(())))
 
     val (status, body) =
       run(
         Method.DELETE,
         path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/access",
         None,
-        Some(Map("userId" -> newUserId.toString)),
+        Some(Map("username" -> "user")),
       )
 
     status shouldBe Status.Ok
     body shouldBe jsonEmpty
   }
-  // Bad request in DELETE /wishlist/{uuid}/access?user=<uuid>
+  // Bad request in DELETE /wishlist/{uuid}/access?username=<String>
   it should "return properly filled error model and HTTP code 400 if body can't be parsed" in {
 
     val (status, body) =
@@ -623,17 +619,16 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
         Method.DELETE,
         path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/access",
         None,
-        Some(Map("userId" -> "user")),
+        Some(Map("user" -> "user")),
       )
 
     status shouldBe Status.BadRequest
     body shouldBe jsonBadRequest
   }
-  // Unexpected error in DELETE /wishlist/{uuid}/access?user=<uuid>
+  // Unexpected error in DELETE /wishlist/{uuid}/access?username=<String>
   it should "return properly filled error model and HTTP code 500 if unexpected error occurred" in {
-    val newUserId = UserId(UUID.randomUUID())
     (mockService.forbidAccess _)
-      .expects(exampleUserId, exampleWishlistId, newUserId)
+      .expects(exampleUserId, exampleWishlistId, "user")
       .returns(IO.raiseError(new RuntimeException("Ooops")))
 
     val (status, body) =
@@ -641,7 +636,7 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
         Method.DELETE,
         path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/access",
         None,
-        Some(Map("userId" -> newUserId.toString)),
+        Some(Map("username" -> "user")),
       )
 
     status shouldBe Status.InternalServerError
@@ -659,7 +654,7 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
     body shouldBe jsonEmpty
   }
 
-//  // Success case in DELETE /wishlist/{uuid}/wish/{id}/user
+  // Success case in DELETE /wishlist/{uuid}/wish/{id}/user
   "DELETE /wishlist/{uuid}/wish/{id}/user" should "return Unit if storage delete successful" in {
     (mockService.removeUserToShareWish _).expects(exampleUserId, exampleWishlistId, 1).returns(IO.pure(Right(())))
 
@@ -668,5 +663,18 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
 
     status shouldBe Status.Ok
     body shouldBe jsonEmpty
+  }
+
+  // Success case in GET /wishlist/{uuid}/users
+  "GET /wishlist/{uuid}/users" should "return List(NewUser) if storage return something" in {
+    (mockService.getSubscribers _)
+      .expects(exampleUserId, exampleWishlistId)
+      .returns(IO.pure(Right(List(NewUser("username", Some("email"), Some("telId"))))))
+
+    val (status, body) =
+      run(Method.GET, path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/users")
+
+    status shouldBe Status.Ok
+    body shouldBe json"""[{ "username": "username", "email": "email", "telegramId": "telId" }]"""
   }
 }

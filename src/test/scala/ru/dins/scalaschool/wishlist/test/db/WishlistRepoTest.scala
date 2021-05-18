@@ -84,7 +84,7 @@ class WishlistRepoTest extends MyTestContainerForAll {
       _      <- insertWishlist(userId = userId).transact(xa)
       result <- storage.findAll(userId, filterEmpty)
     } yield result should matchPattern {
-      case Right(List(WishlistSaved(_, _, "wishlist", Access.Public, Some("comment"), _))) =>
+      case Right(List(WishlistWeb(_, _, "wishlist", Access.Public, Some("comment")))) =>
     }
   }
 
@@ -110,8 +110,8 @@ class WishlistRepoTest extends MyTestContainerForAll {
     } yield result should matchPattern {
       case Right(
             List(
-              WishlistSaved(_, _, "Zero wishlist", Access.Public, Some("comment"), _),
-              WishlistSaved(_, _, "Private wishlist shared", Access.Private, Some("comment"), _),
+              WishlistWeb(_, _, "Zero wishlist", Access.Public, Some("comment")),
+              WishlistWeb(_, _, "Private wishlist shared", Access.Private, Some("comment")),
             ),
           ) =>
     }
@@ -137,8 +137,8 @@ class WishlistRepoTest extends MyTestContainerForAll {
       } yield result should matchPattern {
         case Right(
               List(
-                WishlistSaved(_, _, "Zero wishlist", Access.Public, Some("comment"), _),
-                WishlistSaved(_, _, "Private wishlist shared", Access.Private, Some("comment"), _),
+                WishlistWeb(_, _, "Zero wishlist", Access.Public, Some("comment")),
+                WishlistWeb(_, _, "Private wishlist shared", Access.Private, Some("comment")),
               ),
             ) =>
       }

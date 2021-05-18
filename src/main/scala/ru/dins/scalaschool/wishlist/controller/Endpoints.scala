@@ -107,7 +107,7 @@ object Endpoints {
       .description("Get wishlist")
       .out(jsonBody[Wishlist].description("Wishlist").example(exampleWishlist))
 
-  val getWishlists: Endpoint[(UserId, FilterList), ApiError, List[WishlistSaved], Any] =
+  val getWishlists: Endpoint[(UserId, FilterList), ApiError, List[WishlistWeb], Any] =
     base.get
       .description("Get wishlists")
       .in("list")
@@ -120,9 +120,9 @@ object Endpoints {
           .mapTo(FilterList),
       )
       .out(
-        jsonBody[List[WishlistSaved]]
+        jsonBody[List[WishlistWeb]]
           .description("List of wishlists with matching filter")
-          .example(List(exampleWishlistSaved)),
+          .example(List(exampleWishlistWeb)),
       )
 
   val modifyWishlist: Endpoint[(UserId, WishlistId, WishlistUpdate), ApiError, Wishlist, Any] =
@@ -165,19 +165,25 @@ object Endpoints {
       .in(query[WishStatus]("status").description("New wish's status").example(WishStatus.Booked))
       .out(jsonBody[Wish].description("Wish with updated status").example(exampleWish))
 
-  val provideAccess: Endpoint[(UserId, WishlistId, UserId), ApiError, Unit, Any] =
+  val provideAccess: Endpoint[(UserId, WishlistId, String), ApiError, Unit, Any] =
     baseWithPathId.put
       .description("Provide access to wishlist for user")
       .in("access")
-      .in(query[UserId]("userId").description("User's id to provide access"))
+      .in(query[String]("username").description("User's username to provide access"))
       .out(jsonBody[Unit].description("Empty json body"))
 
-  val forbidAccess: Endpoint[(UserId, WishlistId, UserId), ApiError, Unit, Any] =
+  val forbidAccess: Endpoint[(UserId, WishlistId, String), ApiError, Unit, Any] =
     baseWithPathId.delete
       .description("Forbid access to wishlist for user")
       .in("access")
-      .in(query[UserId]("userId").description("User's id to forbid access"))
+      .in(query[String]("username").description("User's username to forbid access"))
       .out(jsonBody[Unit].description("Empty json body"))
+
+  val getSubscribers: Endpoint[(UserId, WishlistId), ApiError, List[NewUser], Any] =
+    baseWithPathId.get
+      .description("Get wishlist's subscribers")
+      .in("users")
+      .out(jsonBody[List[NewUser]].description("List with subscribers"))
 
   val addUserToShareWish: Endpoint[(UserId, WishlistId, Long), ApiError, Unit, Any] =
     baseWithPathId.put
@@ -192,4 +198,10 @@ object Endpoints {
       .in("wish" / path[Long].description("Wish's id").example(1))
       .in("user")
       .out(jsonBody[Unit].description("Empty json body"))
+
+  val getWish: Endpoint[(UserId, WishlistId, Long), ApiError, Wish, Any] =
+    baseWithPathId.get
+      .description("Get wish from list")
+      .in(path[Long].description("Wish's id to get").example(1))
+      .out(jsonBody[Wish].description("Wish").example(exampleWish))
 }
