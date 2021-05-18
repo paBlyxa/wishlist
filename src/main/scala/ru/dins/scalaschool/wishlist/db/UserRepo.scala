@@ -142,25 +142,27 @@ case class UserRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends UserRepo[F] {
         case _ => Right(())
       }
 
-  override def getSubscribers(wishlistId: WishlistId): F[Either[ApiError, List[NewUser]]] = {
+  override def getSubscribers(wishlistId: WishlistId): F[Either[ApiError, List[NewUser]]] =
     sql"""select u.username, u.email, u.telegram_id from users u where u.id in
       (select ua.user_id from users_access ua where ua.wishlist_id = $wishlistId)"""
-        .query[NewUser]
-        .stream
-        .compile
-        .toList
-        .transact(xa)
-        .attemptSql
-        .map {
-          case Left(e) =>
-            logger.error("An error occurred while looking for wishlist", e)
-            Left(ApiError.unexpectedError)
-          case Right(list) => Right(list)
-        }
-  }
+      .query[NewUser]
+      .stream
+      .compile
+      .toList
+      .transact(xa)
+      .attemptSql
+      .map {
+        case Left(e) =>
+          logger.error("An error occurred while looking for wishlist", e)
+          Left(ApiError.unexpectedError)
+        case Right(list) => Right(list)
+      }
 
   override def hasUserAccess(userId: UserId, wishlistId: WishlistId): F[Option[Long]] =
-    sql"""select id from users_access where user_id = $userId and wishlist_id = $wishlistId""".query[Long].option.transact(xa)
+    sql"""select id from users_access where user_id = $userId and wishlist_id = $wishlistId"""
+      .query[Long]
+      .option
+      .transact(xa)
 
   private def generateUUID = Sync[F].delay(UUID.randomUUID())
 }
