@@ -204,14 +204,31 @@ class WishRepoTest extends MyTestContainerForAll {
     for {
       userId         <- insertUser().transact(xa)
       anotherUser1Id <- insertUser(username = "user1").transact(xa)
+      anotherUser2Id <- insertUser(username = "user2").transact(xa)
       wishlistId     <- insertWishlist(userId = userId).transact(xa)
       wishId         <- insertWish(wishlistId, "present", "some link", BigDecimal(123.45)).transact(xa)
       _              <- storage.updateStatus(anotherUser1Id, wishId, WishStatus.Shared)
+      _              <- storage.addUserToShare(anotherUser2Id, wishId)
+      _              <- storage.removeUserToShare(anotherUser2Id, wishId)
       result         <- storage.removeUserToShare(anotherUser1Id, wishId)
       list           <- storage.getUsersBooked(wishId)
       wish           <- storage.get(wishId)
     } yield (result, list, wish) should matchPattern {
       case (Right(()), List(), Right(Wish(_, _, _, _, _, _, WishStatus.Free, _))) =>
+    }
+  }
+
+  "getUsersBookedWish" should "return list of users if they shared wish" in resetStorage { case (storage, xa) =>
+    for {
+      userId         <- insertUser().transact(xa)
+      anotherUser1Id <- insertUser(username = "user1").transact(xa)
+      anotherUser2Id <- insertUser(username = "user2").transact(xa)
+      wishlistId     <- insertWishlist(userId = userId).transact(xa)
+      wishId         <- insertWish(wishlistId, "present", "some link", BigDecimal(123.45)).transact(xa)
+      _              <- storage.updateStatus(anotherUser1Id, wishId, WishStatus.Shared)
+      _              <- storage.addUserToShare(anotherUser2Id, wishId)
+      list           <- storage.getUsersBookedWish(wishId)
+    } yield list should matchPattern { case Right(List(NewUser("user1", _, _), NewUser("user2", _, _))) =>
     }
   }
 }

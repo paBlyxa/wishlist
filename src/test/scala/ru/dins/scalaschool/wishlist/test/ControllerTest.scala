@@ -677,4 +677,17 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
     status shouldBe Status.Ok
     body shouldBe json"""[{ "username": "username", "email": "email", "telegramId": "telId" }]"""
   }
+
+  // Success case in GET /wishlist/{uuid}/wish/{wishId}/users
+  "GET /wishlist/{uuid}/wish/{wishId}/users" should "return List(NewUser) if storage return something" in {
+    (mockService.getUsersBookedWish _)
+      .expects(exampleUserId, exampleWishlistId, 1)
+      .returns(IO.pure(Right(List(NewUser("username", Some("email"), Some("telId"))))))
+
+    val (status, body) =
+      run(Method.GET, path = s"/api/$exampleUserId/wishlist/$exampleWishlistId/wish/1/users")
+
+    status shouldBe Status.Ok
+    body shouldBe json"""[{ "username": "username", "email": "email", "telegramId": "telId" }]"""
+  }
 }

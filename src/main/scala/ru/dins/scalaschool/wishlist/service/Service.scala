@@ -52,4 +52,6 @@ trait Service[F[_]] {
   def addUserToShareWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]]
 
   def removeUserToShareWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]]
+
+  def getUsersBookedWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, List[NewUser]]]
 }

@@ -69,5 +69,7 @@ object Examples {
       Some("For my birthday"),
     )
   val exampleUser: User =
-    User(exampleUserID, "username", Some("address@mail.com"), Some("@telegramId"))
+    User(exampleUserID, "username", Some("address@mail.com"), Some("telegramId"))
+  val exampleNewUser: NewUser =
+    NewUser("username", Some("address@mail.com"), Some("telegramId"))
 }

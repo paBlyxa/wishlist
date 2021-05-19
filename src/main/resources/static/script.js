@@ -71,7 +71,7 @@
                 },
                 error: function(xhr, status, error) {
                     var errorMessage = xhr.status + ': ' + xhr.statusText;
-                    console.log(errorMessage);
+                    showMessage(errorMessage);
                 }
             });
         }
@@ -90,7 +90,7 @@
                 },
                 error: function(xhr, status, error) {
                     var errorMessage = xhr.status + ': ' + xhr.statusText;
-                    console.log(errorMessage);
+                    showMessage(errorMessage);
                 }
             });
     }
@@ -171,7 +171,7 @@
             }
             body += "</div></form>";
             if (!createNew){
-                body += '<div class="row row-cols-lg-auto g-3 align-items-center">'
+                body += '<div><div class="row row-cols-lg-auto g-3 align-items-center">'
                         + '<div class="col-12">';
                 body += "<label class=\"col-form-label\" for='selectStatus'>Status</label>"
                             + "<select class=\"form-select\" id=\"selectStatus\">";
@@ -181,11 +181,10 @@
                 body += "<option" + (data.status == "got" ? " selected" : "") + ">got</option>";
                 body += "</select></div>";
                 body += '<div class="col-12"><button onclick="bookWish()" class="btn btn-success" style="margin-top: 36px;">' + getLockIcon() + '</button></div>';
-                if (data.status == "shared") {
-                    body += '<div class="col-12"><button onclick="addToShare()" class="btn btn-primary" style="margin-top: 36px;">' + getPlusIcon() + '</button></div>';
-                    body += '<div class="col-12"><button onclick="removeFromShare()" class="btn btn-danger" style="margin-top: 36px;">' + getMinusIcon() + '</button></div>';
+                if (data.status != "free") {
+                    body += "<div id='divSubscribers' style='margin-top: 50px;'></div>";
                 }
-                body += '</div>';
+                body += '</div></div>';
             }
         }
         if (showWL && !createNew) {
@@ -204,12 +203,14 @@
             }
             body += "</tbody></table>";
             body += '<button onclick="showModal(null, false, true)" class="btn btn-primary">Add wish</button>';
-            body += "<div id='divSubscribers' class='mt-2'>";
-            body += "</div>";
+            body += "<div id='divSubscribers' class='mt-2'></div>";
         }
         $('#wishlistModal .modal-body').html(body);
         if (showWL && !createNew){
             showSubscribers(data.id);
+        }
+        if (!showWL && !createNew){
+            showSubscribers(wishlistId, data.id);
         }
         $("#wishlistModal").modal("show");
     }
@@ -227,7 +228,7 @@
             },
             error: function(xhr, status, error) {
                 var errorMessage = xhr.status + ': ' + xhr.statusText;
-                console.log(errorMessage);
+                showMessage(errorMessage);
             }
         });
     }
@@ -272,7 +273,7 @@
             },
             error: function(xhr, status, error) {
                 var errorMessage = xhr.status + ': ' + xhr.statusText;
-                console.log(errorMessage);
+                showMessage(errorMessage);
             }
         });
     }
@@ -302,7 +303,7 @@
             },
             error: function(xhr, status, error) {
                 var errorMessage = xhr.status + ': ' + xhr.statusText;
-                console.log(errorMessage);
+                showMessage(errorMessage);
             }
         });
     }
@@ -319,7 +320,7 @@
             },
             error: function(xhr, status, error) {
                 var errorMessage = xhr.status + ': ' + xhr.statusText;
-                console.log(errorMessage);
+                showMessage(errorMessage);
             }
         });
     }
@@ -347,10 +348,20 @@
         return label;
     }
 
-    function showSubscribers(wishlistId) {
-        var body = '<span>Subscribers: ' +
-                '<span style="padding: 2px 2px; border: 1px solid #c6cdd3; display:inline-block;width:85%;" class="ms-1">'
+    function showSubscribers(wishlistId, wishId) {
+        var str = "Subscribers: ";
+        if (wishId) {
+            str = "";
+        }
+        var body = '<span>' + str + '<span style="padding: 2px 2px; border: 1px solid #c6cdd3;'
+        if (!wishId){
+            body += 'display:inline-block;';
+        }
+        body += 'width:85%;" class="ms-1">';
         var url = "/api/" + user_id + "/wishlist/" + wishlistId + "/users";
+        if (wishId){
+            url = "/api/" + user_id + "/wishlist/" + wishlistId + "/wish/" + wishId + "/users";
+        }
         console.log("GET " + url);
         $.ajax({
             type: "GET",
@@ -359,45 +370,64 @@
             success: function(users) {
                 console.log(users);
                 $("#divSubscribers").empty();
+                var isThisUserInList = false;
                 if (users.length > 0) {
                     for (i = 0; i < users.length; i++) {
                         body += "<span class='badge bg-primary m-1 me-0'><span>" + users[i].username + "</span>";
-                        body += "<span class='unsubscribe' style='cursor: pointer;' data-username='" + users[i].username + "'>" +
-                         getXIcon() + "</span></span></span>";
+                        if (!wishId) {
+                            body += "<span class='unsubscribe' style='cursor: pointer;' data-username='" + users[i].username + "'>" +
+                            getXIcon() + "</span></span>";
+                        }
+                        body += "</span>";
+                        if (username == users[i].username){
+                            isThisUserInList = true;
+                        }
                     }
                 }
-                body += '<span class="badge bg-primary m-1" style="cursor: pointer;height: 24.4px;" id="spanAdd">' +
+                if (!wishId) {
+                    body += '<span class="badge bg-primary m-1" style="cursor: pointer;height: 24.4px;" id="spanAdd">' +
                         '<span>+</span><span>Add</span></span><form style="display:inline-block;" onsubmit="addSubscriber(event)">' +
                         '<input id="inputUserToSubscribe" style="display:none;"></form></span>';
+                }
                 //body += getAddSubscriberForm();
-                $("#divSubscribers").html(body);
-                $(".unsubscribe").click(function() {
-                    var username = this.getAttribute("data-username");
-                    if (username) {
-                        unsubscribe(username, this.parentElement);
+                if (wishId) {
+                    $(".btnShare").remove();
+                    var status = document.getElementById("selectStatus").value;
+                    if (status == "shared") {
+                        var element;
+                        if (isThisUserInList){
+                            element = '<div class="col-12 btnShare"><button onclick="removeFromShare()" class="btn btn-danger" style="margin-top: 36px;">' + getMinusIcon() + '</button></div>';
+                        } else {
+                            element = '<div class="col-12 btnShare"><button onclick="addToShare()" class="btn btn-primary" style="margin-top: 36px;">' + getPlusIcon() + '</button></div>';
+                        }
+                        $( element ).insertBefore( "#divSubscribers" );
                     }
-                });
-                $("#spanAdd").click(function () {
-                    $(this).hide();
-                    $("#inputUserToSubscribe").show();
-                    $("#inputUserToSubscribe").focus();
-                });
-                $("#inputUserToSubscribe").blur(function() {
-                    $("#inputUserToSubscribe").hide();
-                    $("#spanAdd").show();
-                });
+                }
+
+                $("#divSubscribers").html(body);
+                if (!wishId) {
+                    $(".unsubscribe").click(function() {
+                        var username = this.getAttribute("data-username");
+                        if (username) {
+                            unsubscribe(username, this.parentElement);
+                        }
+                    });
+                    $("#spanAdd").click(function () {
+                        $(this).hide();
+                        $("#inputUserToSubscribe").show();
+                        $("#inputUserToSubscribe").focus();
+                    });
+                    $("#inputUserToSubscribe").blur(function() {
+                        $("#inputUserToSubscribe").hide();
+                        $("#spanAdd").show();
+                    });
+                }
             },
             error: function(xhr, status, error) {
                 var errorMessage = xhr.status + ': ' + xhr.statusText;
-                console.log(errorMessage);
+                showMessage(errorMessage);
             }
         });
-    }
-
-    function getAddSubscriberForm() {
-        return '<div class="row row-cols-lg-auto g-3 align-items-center">'
-            + '<div class="col-12"><input type="text" class="form-control" placeholder="Username" id="inSubscriberUsername"></div>'
-            + '<div class="col-12"><button type="button" onclick="addSubscriber()" class="btn btn-primary">Subscribe</button></div></div>';
     }
 
     function addSubscriber(e) {
@@ -417,7 +447,7 @@
             },
             error: function(xhr, status, error) {
                  var errorMessage = xhr.status + ': ' + xhr.statusText;
-                 console.log(errorMessage);
+                 showMessage(errorMessage);
             }
         });
     }
@@ -437,7 +467,7 @@
             },
             error: function(xhr, status, error) {
                 var errorMessage = xhr.status + ': ' + xhr.statusText;
-                console.log(errorMessage);
+                showMessage(errorMessage);
             }
         });
 
@@ -459,7 +489,7 @@
              },
              error: function(xhr, status, error) {
                   var errorMessage = xhr.status + ': ' + xhr.statusText;
-                  console.log(errorMessage);
+                  showMessage(errorMessage);
              }
         });
     }
@@ -474,10 +504,11 @@
              url: url,
              contentType: "application/json; charset=utf-8",
              success: function() {
+                showSubscribers(wishlistId, wishId);
              },
              error: function(xhr, status, error) {
                   var errorMessage = xhr.status + ': ' + xhr.statusText;
-                  console.log(errorMessage);
+                  showMessage(errorMessage);
              }
         });
     }
@@ -492,10 +523,11 @@
              url: url,
              contentType: "application/json; charset=utf-8",
              success: function() {
+                showSubscribers(wishlistId, wishId);
              },
              error: function(xhr, status, error) {
                   var errorMessage = xhr.status + ': ' + xhr.statusText;
-                  console.log(errorMessage);
+                  showMessage(errorMessage);
              }
         });
     }
@@ -529,4 +561,14 @@
         return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-dash-lg" viewBox="0 0 16 16">' +
                '<path d="M0 8a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H1a1 1 0 0 1-1-1z"/>' +
                '</svg>';
+    }
+
+    function showMessage(text) {
+        console.log(text);
+        alert(text);
+        //var div = document.createElement('div');
+        //div.className = "alert alert-warning alert-dismissible fade show";
+        //div.setAttribute("role", "alert");
+        //div.innerHTML = '<strong>' + text + '</strong><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+        //document.body.append(div);
     }

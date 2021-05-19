@@ -127,6 +127,13 @@ case class ServiceImpl[F[_]: Sync](
   override def removeUserToShareWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]] =
     wishRepo.removeUserToShare(userId, wishId).withReadAccess(userId, wishlistId)
 
+  override def getUsersBookedWish(
+      userId: UserId,
+      wishlistId: WishlistId,
+      wishId: Long,
+  ): F[Either[ApiError, List[NewUser]]] =
+    wishRepo.getUsersBookedWish(wishId).withReadAccess(userId, wishlistId)
+
   implicit def injectWishes(f: F[Either[ApiError, WishlistSaved]]): F[Either[ApiError, Wishlist]] =
     f.flatMap(
       _.fold(

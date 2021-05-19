@@ -13,7 +13,7 @@ import doobie.util.transactor.Transactor.Aux
 import org.postgresql.util.PSQLException
 import org.slf4j.{Logger, LoggerFactory}
 import ru.dins.scalaschool.wishlist.models._
-import ru.dins.scalaschool.wishlist.models.Models.{NewWish, Wish, WishUpdate}
+import ru.dins.scalaschool.wishlist.models.Models.{NewUser, NewWish, Wish, WishUpdate}
 
 trait WishRepo[F[_]] {
 
@@ -34,6 +34,8 @@ trait WishRepo[F[_]] {
   def addUserToShare(userId: UserId, wishId: Long): F[Either[ApiError, Unit]]
 
   def removeUserToShare(userId: UserId, wishId: Long): F[Either[ApiError, Unit]]
+
+  def getUsersBookedWish(wishId: Long): F[Either[ApiError, List[NewUser]]]
 }
 
 case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
@@ -146,6 +148,22 @@ case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
           logger.error("An error occurred while remove user to share wish", e)
           Left(ApiError.unexpectedError)
         case Right(_) => Right(())
+      }
+
+  override def getUsersBookedWish(wishId: Long): F[Either[ApiError, List[NewUser]]] =
+    sql"""select u.username, u.email, u.telegram_id from users u where u.id in
+      (select uw.user_id from users_wish uw where uw.wish_id = $wishId)"""
+      .query[NewUser]
+      .stream
+      .compile
+      .toList
+      .transact(xa)
+      .attempt
+      .map {
+        case Left(e) =>
+          logger.error("An error occurred while get users booked wish", e)
+          Left(ApiError.unexpectedError)
+        case Right(list) => Right(list)
       }
 
   private def setStatus(id: Long, wishStatus: WishStatus): doobie.ConnectionIO[Wish] =

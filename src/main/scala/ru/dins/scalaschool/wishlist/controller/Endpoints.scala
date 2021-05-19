@@ -183,7 +183,7 @@ object Endpoints {
     baseWithPathId.get
       .description("Get wishlist's subscribers")
       .in("users")
-      .out(jsonBody[List[NewUser]].description("List with subscribers"))
+      .out(jsonBody[List[NewUser]].description("List with subscribers").example(List(exampleNewUser)))
 
   val addUserToShareWish: Endpoint[(UserId, WishlistId, Long), ApiError, Unit, Any] =
     baseWithPathId.put
@@ -204,4 +204,12 @@ object Endpoints {
       .description("Get wish from list")
       .in(path[Long].description("Wish's id to get").example(1))
       .out(jsonBody[Wish].description("Wish").example(exampleWish))
+
+  val getUsersBookedWish: Endpoint[(UserId, WishlistId, Long), ApiError, List[NewUser], Any] =
+    baseWithPathId.get
+      .description("Get users who booked or shared wish")
+      .in("wish" / path[Long].description("Wish's id").example(1))
+      .in("users")
+      .out(jsonBody[List[NewUser]].description("List with users").example(List(exampleNewUser)))
+
 }
