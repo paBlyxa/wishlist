@@ -50,9 +50,9 @@ docker compose up
 ```
 
 ```
-Simple frontend is available by url: /index.html
+Simple frontend is available by url: http://localhost:8080/index.html
 
-Swagger API documentation is available by url: /swagger/docs/
+Swagger API documentation is available by url: http://localhost:8080/swagger/docs
 ```
 
 ## Features
