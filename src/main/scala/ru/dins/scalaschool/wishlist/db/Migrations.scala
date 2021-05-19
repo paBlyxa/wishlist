@@ -24,6 +24,7 @@ object Migrations {
          |access TEXT DEFAULT 'public',
          |comment TEXT,
          |created_at TIMESTAMP DEFAULT current_timestamp,
+         |event_date DATE,
          |PRIMARY KEY (id)
          |);
          |create table if not exists wish(

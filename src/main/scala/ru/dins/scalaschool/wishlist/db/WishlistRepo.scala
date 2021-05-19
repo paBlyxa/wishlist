@@ -41,15 +41,14 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private val wishlistColumns = List("id", "user_id", "name", "access", "comment", "created_at")
+  private val wishlistColumns = List("id", "user_id", "name", "access", "comment", "created_at", "event_date")
 
   override def save(userId: UserId, wishlist: NewWishlist): F[Either[ApiError, WishlistSaved]] = {
     val query = for {
       uuid <- generateUUID
       query =
-        sql"""insert into wishlist (id, user_id, name, access, comment)
-          values ($uuid, $userId, ${wishlist.name}, ${wishlist.access}, ${wishlist.comment})
-           """
+        sql"""insert into wishlist (id, user_id, name, access, comment, event_date)
+          values ($uuid, $userId, ${wishlist.name}, ${wishlist.access}, ${wishlist.comment}, ${wishlist.eventDate})"""
     } yield query.update
     query.flatMap(
       _.withUniqueGeneratedKeys[WishlistSaved](wishlistColumns: _*)
@@ -108,7 +107,7 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
     )
 
     val q =
-      fr"select w.id, u.username, w.name, w.access, w.comment from wishlist w " ++
+      fr"select w.id, u.username, w.name, w.access, w.comment, w.event_date from wishlist w " ++
         fr"left join users u ON w.user_id = u.id" ++ whereAndOpt(
           usernameFilter,
           nameFilter,
@@ -130,11 +129,13 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
   }
 
   override def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]] = {
-    val frSetName    = wishlist.name.map(value => fr"name = $value")
-    val frSetComment = wishlist.comment.map(value => fr"comment = $value")
-    val frWhere      = fr"where id = $wishlistId"
+    val frSetName      = wishlist.name.map(value => fr"name = $value")
+    val frSetComment   = wishlist.comment.map(value => fr"comment = $value")
+    val frSetAccess    = wishlist.access.map(value => fr"access = $value")
+    val frSetEventDate = wishlist.eventDate.map(value => fr"event_date = $value")
+    val frWhere        = fr"where id = $wishlistId"
 
-    val q = fr"update wishlist" ++ setOpt(frSetName, frSetComment) ++ frWhere
+    val q = fr"update wishlist" ++ setOpt(frSetName, frSetComment, frSetAccess, frSetEventDate) ++ frWhere
 
     q.update
       .withUniqueGeneratedKeys[WishlistSaved](wishlistColumns: _*)

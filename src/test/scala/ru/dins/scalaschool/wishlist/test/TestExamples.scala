@@ -4,7 +4,7 @@ import io.circe.literal.JsonStringContext
 import ru.dins.scalaschool.wishlist.models.Models._
 import ru.dins.scalaschool.wishlist.models.{Access, FilterList, UserId, WishStatus, WishlistId}
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
 
 object TestExamples {
   val exampleStrUUID                = "00000000-0000-0000-0000-000000000000"
@@ -14,8 +14,9 @@ object TestExamples {
   val exampleNewUser: NewUser       = NewUser("username", Some("email"), Some("@username"))
   val exampleUser: User             = User(exampleUserId, "username", Some("email"), Some("@username"))
   val exampleLDT: LocalDateTime     = LocalDateTime.MIN
+  val exampleEventDate: LocalDate   = LocalDate.now()
   val exampleNewWishlist: NewWishlist =
-    NewWishlist("My wishlist", Some(Access.Public), Some("For my birthday"))
+    NewWishlist("My wishlist", Some(Access.Public), Some("For my birthday"), Some(exampleEventDate))
 
   val exampleNewWish: NewWish = NewWish("present", Some("some link"), Some(12.34), Some("comment"))
   val exampleWish: Wish =
@@ -28,6 +29,7 @@ object TestExamples {
       Access.Public,
       Some("For my birthday"),
       exampleLDT,
+      Some(exampleEventDate),
       List(exampleWish),
     )
   val exampleWishlistEmpty: Wishlist =
@@ -38,6 +40,7 @@ object TestExamples {
       Access.Public,
       Some("For my birthday"),
       exampleLDT,
+      Some(exampleEventDate),
       List(),
     )
   val exampleWishlistSaved: WishlistSaved =
@@ -48,6 +51,7 @@ object TestExamples {
       Access.Public,
       Some("For my birthday"),
       exampleLDT,
+      Some(exampleEventDate),
     )
   val exampleWishlistWeb: WishlistWeb =
     WishlistWeb(
@@ -56,8 +60,10 @@ object TestExamples {
       "My wishlist",
       Access.Public,
       Some("For my birthday"),
+      Some(exampleEventDate),
     )
-  val exampleWishlistOption: WishlistUpdate = WishlistUpdate(Some("new name"), Some("new comment"))
+  val exampleWishlistOption: WishlistUpdate =
+    WishlistUpdate(Some("new name"), Some(Access.Private), Some("new comment"), Some(exampleEventDate))
   val exampleWishOption: WishUpdate =
     WishUpdate(Some("new present"), Some("new link"), Some(1000.00), Some("modified comment"))
 
@@ -66,7 +72,7 @@ object TestExamples {
   val jsonUser =
     json""" { "id": $exampleUserId, "username": "username", "email": "email", "telegramId": "@username" } """
   val jsonNewWishlist =
-    json""" { "name": "My wishlist", "access": "public", "comment": "For my birthday" } """
+    json""" { "name": "My wishlist", "access": "public", "comment": "For my birthday", "eventDate": $exampleEventDate } """
   val jsonNewWish        = json""" { "name": "present", "link": "some link", "price": "12.34", "comment": "comment"} """
   val jsonWish           = json""" { 
           "id": 1, 
@@ -86,6 +92,7 @@ object TestExamples {
           "access": "public", 
           "comment": "For my birthday", 
           "createdAt": $exampleLDT,
+          "eventDate": $exampleEventDate,
           "wishes" : [$jsonWish]
           } """
   val jsonWishlistWeb    = json""" { 
@@ -93,10 +100,12 @@ object TestExamples {
           "username": "username", 
           "name": "My wishlist", 
           "access": "public", 
-          "comment": "For my birthday"
+          "comment": "For my birthday",
+          "eventDate": $exampleEventDate
           } """
   val jsonListOfWishlist = json""" [$jsonWishlistWeb]"""
-  val jsonWishlistOption = json"""{ "name": "new name", "comment": "new comment" }"""
+  val jsonWishlistOption =
+    json"""{ "name": "new name", "comment": "new comment", "access": "private", "eventDate": $exampleEventDate }"""
   val jsonWishOption =
     json""" { "name": "new present", "link": "new link", "price": 1000.00, "comment": "modified comment" } """
 

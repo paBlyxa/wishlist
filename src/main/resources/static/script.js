@@ -59,6 +59,7 @@
                         tbody += "<tr style='cursor: pointer;' ondblclick='showWishlist(\"" + list[i].id + "\")'>";
                         tbody += "<td>" + list[i].username +"</td>";
                         tbody += "<td>" + list[i].name +"</td>";
+                        tbody += "<td>" + list[i].eventDate +"</td>";
                         tbody += "<td>" + (list[i].comment != null ? list[i].comment : "") +"</td>";
                         if (username == list[i].username) {
                             tbody += "<td><button class='btn btn-light' type='button' onclick='deleteWishlist(\"" + list[i].id + "\")'>"+ getTrashIcon() + "</button></td>";
@@ -140,6 +141,7 @@
             $("#butDeleteWL").hide();
             data = [];
             data.name = "";
+            data.date = "";
             data.comment = "";
             data.link = "";
             data.price = "";
@@ -160,6 +162,7 @@
                 body += "<option selected>private</option>";
             }
             body += "</select>";
+            body += newInput("inputWLDate", "Date", data.eventDate, "eventDate");
             body += newInput("inputWLComment", "Comment", data.comment, "comment");
             body += "</div></form>";
         } else {

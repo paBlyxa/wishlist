@@ -9,6 +9,8 @@ import ru.dins.scalaschool.wishlist.models.{Access, ApiError, FilterList, OrderD
 import ru.dins.scalaschool.wishlist.models.Models._
 import ru.dins.scalaschool.wishlist.test.TestExamples._
 
+import java.time.LocalDate
+
 class WishlistRepoTest extends MyTestContainerForAll {
 
   def resetStorage(test: (WishlistRepo[IO], Transactor.Aux[IO, Unit]) => IO[Assertion]): Unit =
@@ -30,7 +32,7 @@ class WishlistRepoTest extends MyTestContainerForAll {
       _      <- insertUser(exampleUserId).transact(xa)
       sample <- storage.save(exampleUserId, exampleNewWishlist)
     } yield sample should matchPattern {
-      case Right(WishlistSaved(_, _, "My wishlist", Access.Public, Some("For my birthday"), _)) =>
+      case Right(WishlistSaved(_, _, "My wishlist", Access.Public, Some("For my birthday"), _, _)) =>
     }
   }
 
@@ -61,7 +63,7 @@ class WishlistRepoTest extends MyTestContainerForAll {
       wishlistId <- insertWishlist(userId = userId).transact(xa)
       sample     <- storage.get(wishlistId)
     } yield sample should matchPattern {
-      case Right(WishlistSaved(_, _, "wishlist", Access.Public, Some("comment"), _)) =>
+      case Right(WishlistSaved(_, _, "wishlist", Access.Public, Some("comment"), _, _)) =>
     }
   }
 
@@ -84,7 +86,7 @@ class WishlistRepoTest extends MyTestContainerForAll {
       _      <- insertWishlist(userId = userId).transact(xa)
       result <- storage.findAll(userId, filterEmpty)
     } yield result should matchPattern {
-      case Right(List(WishlistWeb(_, _, "wishlist", Access.Public, Some("comment")))) =>
+      case Right(List(WishlistWeb(_, _, "wishlist", Access.Public, Some("comment"), _))) =>
     }
   }
 
@@ -110,8 +112,8 @@ class WishlistRepoTest extends MyTestContainerForAll {
     } yield result should matchPattern {
       case Right(
             List(
-              WishlistWeb(_, _, "Zero wishlist", Access.Public, Some("comment")),
-              WishlistWeb(_, _, "Private wishlist shared", Access.Private, Some("comment")),
+              WishlistWeb(_, _, "Zero wishlist", Access.Public, Some("comment"), _),
+              WishlistWeb(_, _, "Private wishlist shared", Access.Private, Some("comment"), _),
             ),
           ) =>
     }
@@ -137,8 +139,8 @@ class WishlistRepoTest extends MyTestContainerForAll {
       } yield result should matchPattern {
         case Right(
               List(
-                WishlistWeb(_, _, "Zero wishlist", Access.Public, Some("comment")),
-                WishlistWeb(_, _, "Private wishlist shared", Access.Private, Some("comment")),
+                WishlistWeb(_, _, "Zero wishlist", Access.Public, Some("comment"), _),
+                WishlistWeb(_, _, "Private wishlist shared", Access.Private, Some("comment"), _),
               ),
             ) =>
       }
@@ -151,7 +153,7 @@ class WishlistRepoTest extends MyTestContainerForAll {
         wishlistId <- insertWishlist(userId = userId).transact(xa)
         result     <- storage.update(wishlistId, exampleWishlistOption)
       } yield result should matchPattern {
-        case Right(WishlistSaved(_, _, "new name", Access.Public, Some("new comment"), _)) =>
+        case Right(WishlistSaved(_, _, "new name", Access.Private, Some("new comment"), _, _)) =>
       }
   }
 
@@ -159,20 +161,41 @@ class WishlistRepoTest extends MyTestContainerForAll {
     for {
       userId     <- insertUser().transact(xa)
       wishlistId <- insertWishlist(userId = userId).transact(xa)
-      result     <- storage.update(wishlistId, WishlistUpdate(Some("new name"), None))
+      result     <- storage.update(wishlistId, WishlistUpdate(Some("new name"), None, None, None))
     } yield result should matchPattern {
-      case Right(WishlistSaved(_, _, "new name", Access.Public, Some("comment"), _)) =>
+      case Right(WishlistSaved(_, _, "new name", Access.Public, Some("comment"), _, _)) =>
     }
   }
 
-  "update" should "return Wishlist with modified access if update successful" in resetStorage { case (storage, xa) =>
+  it should "return Wishlist with modified access if update successful" in resetStorage { case (storage, xa) =>
     for {
       userId     <- insertUser().transact(xa)
       wishlistId <- insertWishlist(userId = userId).transact(xa)
-      result     <- storage.updateAccess(wishlistId, Access.Private)
+      result     <- storage.update(wishlistId, WishlistUpdate(None, Some(Access.Private), None, None))
     } yield result should matchPattern {
-      case Right(WishlistSaved(_, _, "wishlist", Access.Private, Some("comment"), _)) =>
+      case Right(WishlistSaved(_, _, "wishlist", Access.Private, Some("comment"), _, _)) =>
     }
+  }
+
+  it should "return Wishlist with modified eventDate if update successful" in resetStorage { case (storage, xa) =>
+    for {
+      userId     <- insertUser().transact(xa)
+      wishlistId <- insertWishlist(userId = userId).transact(xa)
+      result     <- storage.update(wishlistId, WishlistUpdate(None, None, None, Some(LocalDate.MIN)))
+    } yield result should matchPattern {
+      case Right(WishlistSaved(_, _, "wishlist", Access.Public, Some("comment"), _, Some(LocalDate.MIN))) =>
+    }
+  }
+
+  "updateAccess" should "return Wishlist with modified access if update successful" in resetStorage {
+    case (storage, xa) =>
+      for {
+        userId     <- insertUser().transact(xa)
+        wishlistId <- insertWishlist(userId = userId).transact(xa)
+        result     <- storage.updateAccess(wishlistId, Access.Private)
+      } yield result should matchPattern {
+        case Right(WishlistSaved(_, _, "wishlist", Access.Private, Some("comment"), _, _)) =>
+      }
   }
 
   it should "return Left(Not found) if storage is empty" in resetStorage { case (storage, _) =>

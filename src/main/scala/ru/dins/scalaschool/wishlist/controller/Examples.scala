@@ -3,7 +3,7 @@ package ru.dins.scalaschool.wishlist.controller
 import ru.dins.scalaschool.wishlist.models.Models._
 import ru.dins.scalaschool.wishlist.models.{Access, UserId, WishStatus, WishlistId}
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
 
 object Examples {
 
@@ -28,6 +28,7 @@ object Examples {
       Access.Public,
       Some("For my birthday"),
       LocalDateTime.now(),
+      Some(LocalDate.now()),
       List(exampleWish),
     )
   val exampleModifiedWishlist: Wishlist =
@@ -38,6 +39,7 @@ object Examples {
       Access.Public,
       Some("New year"),
       LocalDateTime.now(),
+      Some(LocalDate.now()),
       List(exampleWish),
     )
   val exampleWishlistSaved: WishlistSaved =
@@ -48,6 +50,7 @@ object Examples {
       Access.Public,
       Some("For my birthday"),
       LocalDateTime.now(),
+      Some(LocalDate.now()),
     )
   val exampleModifiedWish: Wish =
     Wish(
@@ -67,6 +70,7 @@ object Examples {
       "My wishlist",
       Access.Public,
       Some("For my birthday"),
+      Some(LocalDate.now()),
     )
   val exampleUser: User =
     User(exampleUserID, "username", Some("address@mail.com"), Some("telegramId"))

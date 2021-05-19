@@ -231,7 +231,7 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
       (userRepo.hasUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(None))
     }
     service
-      .modify(anotherUserId, exampleWishlistId, WishlistUpdate(None, None))
+      .modify(anotherUserId, exampleWishlistId, WishlistUpdate(None, None, None, None))
       .unsafeRunSync() shouldBe ApiError.forbidden.asLeft
   }
   it should "return NotFound if storage hasn't wishlist with that id" in {

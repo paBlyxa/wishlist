@@ -8,6 +8,8 @@ import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.generic.auto._
 import sttp.tapir.codec.newtype._
 
+import java.time.LocalDate
+
 object Endpoints {
 
   import Examples._
@@ -70,7 +72,7 @@ object Endpoints {
       .in(
         jsonBody[NewWishlist]
           .description("Wishlist to create")
-          .example(NewWishlist("My wishlist", Some(Access.Public), Some("For my birthday"))),
+          .example(NewWishlist("My wishlist", Some(Access.Public), Some("For my birthday"), Some(LocalDate.now()))),
       )
       .out(jsonBody[Wishlist].description("New wishlist").example(exampleWishlist))
 
@@ -131,7 +133,9 @@ object Endpoints {
       .in(
         jsonBody[WishlistUpdate]
           .description("Wishlist's fields to modify")
-          .example(WishlistUpdate(Some("My new wishlist"), Some("New year"))),
+          .example(
+            WishlistUpdate(Some("My new wishlist"), Some(Access.Private), Some("New year"), Some(LocalDate.now())),
+          ),
       )
       .out(jsonBody[Wishlist].description("Wishlist with modified parameters").example(exampleModifiedWishlist))
 

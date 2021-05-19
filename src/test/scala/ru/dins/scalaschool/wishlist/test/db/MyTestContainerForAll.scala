@@ -53,7 +53,7 @@ trait MyTestContainerForAll extends AnyFlatSpec with Matchers with TestContainer
       access: Access = Access.Public,
       comment: String = "comment",
   ): doobie.ConnectionIO[WishlistId] =
-    sql"insert into wishlist values ($wishlistId, $userId, $name, $access, $comment, $exampleLDT)".update
+    sql"insert into wishlist values ($wishlistId, $userId, $name, $access, $comment, $exampleLDT, $exampleEventDate)".update
       .withUniqueGeneratedKeys[WishlistId]("id")
 
   def insertWish(

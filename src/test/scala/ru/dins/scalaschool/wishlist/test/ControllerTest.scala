@@ -350,7 +350,7 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Success case in PATCH /wishlist/{uuid}
   it should "return JSON wishlist with modified name" in {
     (mockService.modify _)
-      .expects(exampleUserId, exampleWishlistId, WishlistUpdate(Some("new name"), None))
+      .expects(exampleUserId, exampleWishlistId, WishlistUpdate(Some("new name"), None, None, None))
       .returns(IO.pure(Right(exampleWishlist)))
 
     val (status, body) =
@@ -362,7 +362,7 @@ class ControllerTest extends AnyFlatSpec with Matchers with MockFactory {
   // Success case in PATCH /wishlist/{uuid}
   it should "return JSON wishlist with modified comment" in {
     (mockService.modify _)
-      .expects(exampleUserId, exampleWishlistId, WishlistUpdate(None, Some("new comment")))
+      .expects(exampleUserId, exampleWishlistId, WishlistUpdate(None, None, Some("new comment"), None))
       .returns(IO.pure(Right(exampleWishlist)))
 
     val (status, body) =
