@@ -1,6 +1,7 @@
 package ru.dins.scalaschool.wishlist.db
 
 import cats.effect.Sync
+import cats.implicits.catsSyntaxApplicativeId
 import cats.syntax.functor._
 import cats.syntax.applicativeError._
 import doobie.implicits._
@@ -12,7 +13,7 @@ import doobie.util.transactor.Transactor.Aux
 import org.postgresql.util.PSQLException
 import org.slf4j.{Logger, LoggerFactory}
 import ru.dins.scalaschool.wishlist.models._
-import ru.dins.scalaschool.wishlist.models.Models.{NewWish, Wish, WishUpdate}
+import ru.dins.scalaschool.wishlist.models.Models.{NewUser, NewWish, Wish, WishUpdate}
 
 trait WishRepo[F[_]] {
 
@@ -28,7 +29,13 @@ trait WishRepo[F[_]] {
 
   def updateStatus(userId: UserId, id: Long, wishStatus: WishStatus): F[Either[ApiError, Wish]]
 
-  def getUserBooked(wishId: Long): F[List[UserId]]
+  def getUsersBooked(wishId: Long): F[List[UserId]]
+
+  def addUserToShare(userId: UserId, wishId: Long): F[Either[ApiError, Unit]]
+
+  def removeUserToShare(userId: UserId, wishId: Long): F[Either[ApiError, Unit]]
+
+  def getUsersBookedWish(wishId: Long): F[Either[ApiError, List[NewUser]]]
 }
 
 case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
@@ -116,6 +123,49 @@ case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
         case Right(wish) => Right(wish)
       }
 
+  override def getUsersBooked(wishId: Long): F[List[UserId]] =
+    sql"select user_id from users_wish where wish_id = $wishId".query[UserId].stream.compile.toList.transact(xa)
+
+  override def addUserToShare(userId: UserId, wishId: Long): F[Either[ApiError, Unit]] =
+    insertUsersWish(userId, wishId).transact(xa).attempt.map {
+      case Left(UnexpectedEnd) => Left(ApiError.wishNotFound(wishId))
+      case Left(e) =>
+        logger.error("An error occurred while add user to share wish", e)
+        Left(ApiError.unexpectedError)
+      case Right(_) => Right(())
+    }
+
+  override def removeUserToShare(userId: UserId, wishId: Long): F[Either[ApiError, Unit]] =
+    (for {
+      _  <- deleteUserFromUsersWish(userId, wishId)
+      id <- selectIdFromUsersWish(wishId)
+      _  <- if (id.isEmpty) setStatus(wishId, WishStatus.Free) else ().pure[doobie.ConnectionIO]
+    } yield ())
+      .transact(xa)
+      .attempt
+      .map {
+        case Left(e) =>
+          logger.error("An error occurred while remove user to share wish", e)
+          Left(ApiError.unexpectedError)
+        case Right(_) => Right(())
+      }
+
+  override def getUsersBookedWish(wishId: Long): F[Either[ApiError, List[NewUser]]] =
+    sql"""select u.username, u.email, u.telegram_id from users u where u.id in
+      (select uw.user_id from users_wish uw where uw.wish_id = $wishId)"""
+      .query[NewUser]
+      .stream
+      .compile
+      .toList
+      .transact(xa)
+      .attempt
+      .map {
+        case Left(e) =>
+          logger.error("An error occurred while get users booked wish", e)
+          Left(ApiError.unexpectedError)
+        case Right(list) => Right(list)
+      }
+
   private def setStatus(id: Long, wishStatus: WishStatus): doobie.ConnectionIO[Wish] =
     sql"update wish set status = $wishStatus where id = $id".update
       .withUniqueGeneratedKeys[Wish](wishColumns: _*)
@@ -126,6 +176,9 @@ case class WishRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishRepo[F] {
   private def removeUsersWish(wishId: Long): doobie.ConnectionIO[Int] =
     sql"delete from users_wish where wish_id = $wishId".update.run
 
-  override def getUserBooked(wishId: Long): F[List[UserId]] =
-    sql"select user_id from users_wish where wish_id = $wishId".query[UserId].stream.compile.toList.transact(xa)
+  private def deleteUserFromUsersWish(userId: UserId, wishId: Long): doobie.ConnectionIO[Int] =
+    sql"delete from users_wish where wish_id = $wishId and user_id = $userId".update.run
+
+  private def selectIdFromUsersWish(wishId: Long): doobie.ConnectionIO[Option[Int]] =
+    sql"select id from users_wish where wish_id = $wishId limit 1".query[Int].option
 }

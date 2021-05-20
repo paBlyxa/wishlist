@@ -1,7 +1,9 @@
 package ru.dins.scalaschool.wishlist
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{Blocker, ExitCode, IO, IOApp}
 import doobie.Transactor
+import org.http4s._
+import org.http4s.dsl.io._
 import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -10,6 +12,8 @@ import ru.dins.scalaschool.wishlist.db.{Migrations, UserRepoImpl, WishRepoImpl, 
 import ru.dins.scalaschool.wishlist.service.ServiceImpl
 import sttp.tapir.openapi.circe.yaml.RichOpenAPI
 import sttp.tapir.swagger.http4s.SwaggerHttp4s
+
+import java.util.concurrent.Executors
 
 object Main extends IOApp {
 
@@ -35,9 +39,18 @@ object Main extends IOApp {
     val service      = ServiceImpl(userRepo, wishlistRepo, wishRepo)
     val controller   = Controller(service)
     val swagger      = new SwaggerHttp4s(controller.docs.toYaml)
+    val blockingPool = Executors.newFixedThreadPool(4)
+    val blocker      = Blocker.liftExecutorService(blockingPool)
+    val staticRoutes = HttpRoutes.of[IO] {
+      case request @ GET -> Root / "index.html" =>
+        StaticFile.fromResource("/static/index.html", blocker, Some(request)).getOrElseF(NotFound())
+      case request @ GET -> Root / "script.js" =>
+        StaticFile.fromResource("/static/script.js", blocker, Some(request)).getOrElseF(NotFound())
+    }
     val httpApp = Router(
       "/"        -> controller.routes,
       "/swagger" -> swagger.routes,
+      "/"        -> staticRoutes,
     ).orNotFound
     val server = BlazeServerBuilder[IO](executionContext)
       .withHttpApp(httpApp)

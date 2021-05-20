@@ -3,7 +3,7 @@ package ru.dins.scalaschool.wishlist.models
 import io.circe.Codec
 import io.circe.generic.semiauto._
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
 
 object Models {
 
@@ -36,6 +36,7 @@ object Models {
       access: Access,
       comment: Option[String],
       createdAt: LocalDateTime,
+      eventDate: Option[LocalDate],
   )
 
   case class Wishlist(
@@ -45,20 +46,42 @@ object Models {
       access: Access,
       comment: Option[String],
       createdAt: LocalDateTime,
+      eventDate: Option[LocalDate],
       wishes: List[Wish],
+  )
+
+  case class WishlistWeb(
+      id: WishlistId,
+      username: String,
+      name: String,
+      access: Access,
+      comment: Option[String],
+      eventDate: Option[LocalDate],
   )
 
   object Wishlist {
     def apply(wishlistSaved: WishlistSaved, wishes: List[Wish]): Wishlist = {
       import wishlistSaved._
-      Wishlist(id, userId, name, access, comment, createdAt, wishes)
+      Wishlist(id, userId, name, access, comment, createdAt, eventDate, wishes)
     }
   }
 
-  case class NewWishlist(name: String, access: Option[Access], comment: Option[String])
-  case class WishlistUpdate(name: Option[String], comment: Option[String]) {
-    lazy val isEmpty: Boolean = name.isEmpty && comment.isEmpty
+  case class NewWishlist(
+      name: String,
+      access: Option[Access] = Some(Access.Public),
+      comment: Option[String],
+      eventDate: Option[LocalDate],
+  )
+
+  case class WishlistUpdate(
+      name: Option[String],
+      access: Option[Access],
+      comment: Option[String],
+      eventDate: Option[LocalDate],
+  ) {
+    lazy val isEmpty: Boolean = name.isEmpty && comment.isEmpty && access.isEmpty && eventDate.isEmpty
   }
+
   case class WishUpdate(
       name: Option[String],
       link: Option[String],
@@ -77,5 +100,6 @@ object Models {
   implicit val codecNewWishlist: Codec[NewWishlist]       = deriveCodec
   implicit val codecWishlistUpdate: Codec[WishlistUpdate] = deriveCodec
   implicit val codecWishUpdate: Codec[WishUpdate]         = deriveCodec
+  implicit val codecWishlistWeb: Codec[WishlistWeb]       = deriveCodec
 
 }

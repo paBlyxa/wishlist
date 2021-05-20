@@ -6,7 +6,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import ru.dins.scalaschool.wishlist.db.{UserRepo, WishRepo, WishlistRepo}
-import ru.dins.scalaschool.wishlist.models.Models.{WishUpdate, WishlistUpdate}
+import ru.dins.scalaschool.wishlist.models.Models.{NewUser, WishUpdate, WishlistUpdate}
 import ru.dins.scalaschool.wishlist.models.{Access, ApiError, UserId, WishStatus}
 import ru.dins.scalaschool.wishlist.service.ServiceImpl
 import ru.dins.scalaschool.wishlist.test.TestExamples._
@@ -231,7 +231,7 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
       (userRepo.hasUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(None))
     }
     service
-      .modify(anotherUserId, exampleWishlistId, WishlistUpdate(None, None))
+      .modify(anotherUserId, exampleWishlistId, WishlistUpdate(None, None, None, None))
       .unsafeRunSync() shouldBe ApiError.forbidden.asLeft
   }
   it should "return NotFound if storage hasn't wishlist with that id" in {
@@ -406,7 +406,7 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
     inSequence {
       (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
       (wishRepo.get _).expects(1).returns(IO.pure(exampleWish.copy(status = WishStatus.Booked).asRight))
-      (wishRepo.getUserBooked _).expects(1).returns(IO.pure(List(exampleUserId)))
+      (wishRepo.getUsersBooked _).expects(1).returns(IO.pure(List(exampleUserId)))
     }
     service
       .updateWishStatus(anotherUserId, exampleWishlistId, 1, WishStatus.Got)
@@ -417,7 +417,7 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
     inSequence {
       (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
       (wishRepo.get _).expects(1).returns(IO.pure(exampleWish.copy(status = WishStatus.Booked).asRight))
-      (wishRepo.getUserBooked _).expects(1).returns(IO.pure(List(anotherUserId)))
+      (wishRepo.getUsersBooked _).expects(1).returns(IO.pure(List(anotherUserId)))
       (wishRepo.updateStatus _).expects(anotherUserId, 1, WishStatus.Got).returns(IO.pure(exampleWish.asRight))
     }
     service
@@ -438,7 +438,7 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
     inSequence {
       (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
       (wishRepo.get _).expects(1).returns(IO.pure(exampleWish.copy(status = WishStatus.Shared).asRight))
-      (wishRepo.getUserBooked _).expects(1).returns(IO.pure(List(exampleUserId, anotherUserId)))
+      (wishRepo.getUsersBooked _).expects(1).returns(IO.pure(List(exampleUserId, anotherUserId)))
     }
     service
       .updateWishStatus(anotherUserId, exampleWishlistId, 1, WishStatus.Free)
@@ -446,36 +446,122 @@ class ServiceTest extends AnyFlatSpec with Matchers with MockFactory {
   }
 
   "provideAccess" should "return Unit if storage save users_access successful" in {
-    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
     inSequence {
       (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
-      (userRepo.saveUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(Right(())))
+      (userRepo.saveUserAccess _).expects("username", exampleWishlistId).returns(IO.pure(Right(())))
     }
-    service.provideAccess(exampleUserId, exampleWishlistId, anotherUserId).unsafeRunSync() shouldBe Right(())
+    service.provideAccess(exampleUserId, exampleWishlistId, "username").unsafeRunSync() shouldBe Right(())
   }
   it should "return Forbidden if user hasn't access to that wishlist" in {
     val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
     (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
 
     service
-      .provideAccess(anotherUserId, exampleWishlistId, exampleUserId)
+      .provideAccess(anotherUserId, exampleWishlistId, "username")
       .unsafeRunSync() shouldBe ApiError.forbidden.asLeft
   }
 
   "forbidAccess" should "return Unit if storage remove users_access successful" in {
-    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
     inSequence {
       (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
-      (userRepo.removeUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(Right(())))
+      (userRepo.removeUserAccess _).expects("username", exampleWishlistId).returns(IO.pure(Right(())))
     }
-    service.forbidAccess(exampleUserId, exampleWishlistId, anotherUserId).unsafeRunSync() shouldBe Right(())
+    service.forbidAccess(exampleUserId, exampleWishlistId, "username").unsafeRunSync() shouldBe Right(())
   }
   it should "return Forbidden if user hasn't access to that wishlist" in {
     val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
     (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
 
     service
-      .forbidAccess(anotherUserId, exampleWishlistId, exampleUserId)
+      .forbidAccess(anotherUserId, exampleWishlistId, "username")
+      .unsafeRunSync() shouldBe ApiError.forbidden.asLeft
+  }
+
+  "getSubscribers" should "return list of users if they subscribed on that wishlist" in {
+    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
+    val user          = NewUser("user", None, None)
+    inSequence {
+      (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
+      (userRepo.getSubscribers _).expects(exampleWishlistId).returns(IO.pure(Right(List(user))))
+    }
+    service.getSubscribers(anotherUserId, exampleWishlistId).unsafeRunSync() shouldBe Right(List(user))
+  }
+
+  "addUserToShareWish" should "return Unit if storage add user to share wish successful" in {
+    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
+    inSequence {
+      (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
+      (wishRepo.get _).expects(1).returns(IO.pure(Right(exampleWish.copy(status = WishStatus.Shared))))
+      (wishRepo.addUserToShare _).expects(anotherUserId, 1).returns(IO.pure(Right(())))
+    }
+
+    service.addUserToShareWish(anotherUserId, exampleWishlistId, 1).unsafeRunSync() shouldBe Right(())
+  }
+  it should "return Forbidden if wish's status not Share" in {
+    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
+    inSequence {
+      (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
+      (wishRepo.get _).expects(1).returns(IO.pure(Right(exampleWish.copy(status = WishStatus.Booked))))
+    }
+
+    service.addUserToShareWish(anotherUserId, exampleWishlistId, 1).unsafeRunSync() shouldBe ApiError.forbidden.asLeft
+  }
+  it should "return Forbidden if user hasn't access to that wishlist" in {
+    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
+    inSequence {
+      (wishlistRepo.get _)
+        .expects(exampleWishlistId)
+        .returns(IO.pure(Right(exampleWishlistSaved.copy(access = Access.Private))))
+      (userRepo.hasUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(None))
+    }
+    service.addUserToShareWish(anotherUserId, exampleWishlistId, 1).unsafeRunSync() shouldBe ApiError.forbidden.asLeft
+  }
+
+  "removeUserToShareWish" should "return Unit if storage remove user from share wish successful" in {
+    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
+    inSequence {
+      (wishlistRepo.get _).expects(exampleWishlistId).returns(IO.pure(Right(exampleWishlistSaved)))
+      (wishRepo.removeUserToShare _).expects(anotherUserId, 1).returns(IO.pure(Right(())))
+    }
+
+    service.removeUserToShareWish(anotherUserId, exampleWishlistId, 1).unsafeRunSync() shouldBe Right(())
+  }
+  it should "return Forbidden if user hasn't access to that wishlist" in {
+    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
+    inSequence {
+      (wishlistRepo.get _)
+        .expects(exampleWishlistId)
+        .returns(IO.pure(Right(exampleWishlistSaved.copy(access = Access.Private))))
+      (userRepo.hasUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(None))
+    }
+    service
+      .removeUserToShareWish(anotherUserId, exampleWishlistId, 1)
+      .unsafeRunSync() shouldBe ApiError.forbidden.asLeft
+  }
+
+  "getUsersBookedWish" should "return list of users if they shared wish" in {
+    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
+    val user          = NewUser("user", None, None)
+    inSequence {
+      (wishlistRepo.get _)
+        .expects(exampleWishlistId)
+        .returns(IO.pure(Right(exampleWishlistSaved)))
+      (wishRepo.getUsersBookedWish _).expects(1).returns(IO.pure(Right(List(user))))
+    }
+    service
+      .getUsersBookedWish(anotherUserId, exampleWishlistId, 1)
+      .unsafeRunSync() shouldBe List(user).asRight
+  }
+  it should "return Forbidden if user hasn't access to that wishlist" in {
+    val anotherUserId = UserId("00000000-0000-0000-0000-000000000001")
+    inSequence {
+      (wishlistRepo.get _)
+        .expects(exampleWishlistId)
+        .returns(IO.pure(Right(exampleWishlistSaved.copy(access = Access.Private))))
+      (userRepo.hasUserAccess _).expects(anotherUserId, exampleWishlistId).returns(IO.pure(None))
+    }
+    service
+      .getUsersBookedWish(anotherUserId, exampleWishlistId, 1)
       .unsafeRunSync() shouldBe ApiError.forbidden.asLeft
   }
 }

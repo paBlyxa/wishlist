@@ -84,12 +84,26 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
 
   private val forbidAccessRoute = Http4sServerInterpreter.toRoutes(forbidAccess)((service.forbidAccess _).tupled)
 
+  private val getSubscribersRoute = Http4sServerInterpreter.toRoutes(getSubscribers)((service.getSubscribers _).tupled)
+
+  private val addUserToShareWishRoute =
+    Http4sServerInterpreter.toRoutes(addUserToShareWish)((service.addUserToShareWish _).tupled)
+
+  private val removeUserToShareWishRoute =
+    Http4sServerInterpreter.toRoutes(removeUserToShareWish)((service.removeUserToShareWish _).tupled)
+
+  private val getWishRoute = Http4sServerInterpreter.toRoutes(getWish)((service.getWish _).tupled)
+
+  private val getUsersBookedWishRoute =
+    Http4sServerInterpreter.toRoutes(getUsersBookedWish)((service.getUsersBookedWish _).tupled)
+
   def routes: HttpRoutes[F] =
     registerUserRoute <+>
       loginUserRoute <+>
       createWishlistRoute <+>
       removeWishlistRoute <+>
       addWishToListRoute <+>
+      getWishRoute <+>
       removeWishFromListRoute <+>
       clearWishlistRoute <+>
       getWishlistRoute <+>
@@ -100,7 +114,11 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
       getWishesRoute <+>
       updateWishStatusRoute <+>
       provideAccessRoute <+>
-      forbidAccessRoute
+      forbidAccessRoute <+>
+      getSubscribersRoute <+>
+      addUserToShareWishRoute <+>
+      removeUserToShareWishRoute <+>
+      getUsersBookedWishRoute
 
   val docs: OpenAPI = OpenAPIDocsInterpreter.toOpenAPI(
     List(
@@ -109,6 +127,7 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
       createWishlist,
       removeWishlist,
       addWishToList,
+      getWish,
       removeWishFromList,
       clearWishlist,
       getWishlist,
@@ -120,6 +139,10 @@ case class Controller[F[_]: Concurrent: ContextShift: Timer](service: Service[F]
       updateWishStatus,
       provideAccess,
       forbidAccess,
+      getSubscribers,
+      addUserToShareWish,
+      removeUserToShareWish,
+      getUsersBookedWish,
     ),
     "Wishlist API",
     "1.0",

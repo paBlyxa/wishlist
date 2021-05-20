@@ -15,6 +15,8 @@ trait Service[F[_]] {
 
   def addWish(userId: UserId, wishlistId: WishlistId, wish: NewWish): F[Either[ApiError, Wish]]
 
+  def getWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Wish]]
+
   def removeWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]]
 
   def clear(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, Wishlist]]
@@ -24,7 +26,7 @@ trait Service[F[_]] {
   def list(
       userId: UserId,
       filter: FilterList,
-  ): F[Either[ApiError, List[WishlistSaved]]]
+  ): F[Either[ApiError, List[WishlistWeb]]]
 
   def modify(userId: UserId, wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, Wishlist]]
 
@@ -41,7 +43,15 @@ trait Service[F[_]] {
       wishStatus: WishStatus,
   ): F[Either[ApiError, Wish]]
 
-  def provideAccess(userOwnerId: UserId, wishlistId: WishlistId, userId: UserId): F[Either[ApiError, Unit]]
+  def provideAccess(userOwnerId: UserId, wishlistId: WishlistId, username: String): F[Either[ApiError, Unit]]
 
-  def forbidAccess(userOwnerId: UserId, wishlistId: WishlistId, userId: UserId): F[Either[ApiError, Unit]]
+  def forbidAccess(userOwnerId: UserId, wishlistId: WishlistId, username: String): F[Either[ApiError, Unit]]
+
+  def getSubscribers(userId: UserId, wishlistId: WishlistId): F[Either[ApiError, List[NewUser]]]
+
+  def addUserToShareWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]]
+
+  def removeUserToShareWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, Unit]]
+
+  def getUsersBookedWish(userId: UserId, wishlistId: WishlistId, wishId: Long): F[Either[ApiError, List[NewUser]]]
 }

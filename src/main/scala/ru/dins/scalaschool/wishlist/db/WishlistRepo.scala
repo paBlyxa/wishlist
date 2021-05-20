@@ -30,7 +30,7 @@ trait WishlistRepo[F[_]] {
   def findAll(
       userId: UserId,
       filter: FilterList,
-  ): F[Either[ApiError, List[WishlistSaved]]]
+  ): F[Either[ApiError, List[WishlistWeb]]]
 
   def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]]
 
@@ -41,15 +41,14 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private val wishlistColumns = List("id", "user_id", "name", "access", "comment", "created_at")
+  private val wishlistColumns = List("id", "user_id", "name", "access", "comment", "created_at", "event_date")
 
   override def save(userId: UserId, wishlist: NewWishlist): F[Either[ApiError, WishlistSaved]] = {
     val query = for {
       uuid <- generateUUID
       query =
-        sql"""insert into wishlist (id, user_id, name, access, comment)
-          values ($uuid, $userId, ${wishlist.name}, ${wishlist.access}, ${wishlist.comment})
-           """
+        sql"""insert into wishlist (id, user_id, name, access, comment, event_date)
+          values ($uuid, $userId, ${wishlist.name}, ${wishlist.access}, ${wishlist.comment}, ${wishlist.eventDate})"""
     } yield query.update
     query.flatMap(
       _.withUniqueGeneratedKeys[WishlistSaved](wishlistColumns: _*)
@@ -85,14 +84,14 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
   override def findAll(
       userId: UserId,
       filter: FilterList,
-  ): F[Either[ApiError, List[WishlistSaved]]] = {
+  ): F[Either[ApiError, List[WishlistWeb]]] = {
 
     import filter._
 
     val usernameFilter = username
       .map(username => s"%$username%")
       .map(username => fr"u.username ILIKE $username")
-      //.map(username => fr"w.user_id IN (select id from users us where us.username ILIKE $username)")
+    //.map(username => fr"w.user_id IN (select id from users us where us.username ILIKE $username)")
     val nameFilter = name.map(name => s"%$name%").map(name => fr"w.name ILIKE $name")
     val frOrderBy = orderBy match {
       case Some(WishlistOrder.Username) => fr"order by u.username"
@@ -108,14 +107,14 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
     )
 
     val q =
-      fr"select w.id, w.user_id, w.name, w.access, w.comment, w.created_at, u.username from wishlist w " ++
+      fr"select w.id, u.username, w.name, w.access, w.comment, w.event_date from wishlist w " ++
         fr"left join users u ON w.user_id = u.id" ++ whereAndOpt(
           usernameFilter,
           nameFilter,
           accessControl,
         ) ++ frOrderBy ++ frOrderDir
 
-    q.query[WishlistSaved]
+    q.query[WishlistWeb]
       .stream
       .compile
       .toList
@@ -130,11 +129,13 @@ case class WishlistRepoImpl[F[_]: Sync](xa: Aux[F, Unit]) extends WishlistRepo[F
   }
 
   override def update(wishlistId: WishlistId, wishlist: WishlistUpdate): F[Either[ApiError, WishlistSaved]] = {
-    val frSetName    = wishlist.name.map(value => fr"name = $value")
-    val frSetComment = wishlist.comment.map(value => fr"comment = $value")
-    val frWhere      = fr"where id = $wishlistId"
+    val frSetName      = wishlist.name.map(value => fr"name = $value")
+    val frSetComment   = wishlist.comment.map(value => fr"comment = $value")
+    val frSetAccess    = wishlist.access.map(value => fr"access = $value")
+    val frSetEventDate = wishlist.eventDate.map(value => fr"event_date = $value")
+    val frWhere        = fr"where id = $wishlistId"
 
-    val q = fr"update wishlist" ++ setOpt(frSetName, frSetComment) ++ frWhere
+    val q = fr"update wishlist" ++ setOpt(frSetName, frSetComment, frSetAccess, frSetEventDate) ++ frWhere
 
     q.update
       .withUniqueGeneratedKeys[WishlistSaved](wishlistColumns: _*)

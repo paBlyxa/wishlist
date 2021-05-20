@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4"
+            crossorigin="anonymous"></script>
+    <script type="text/javascript" src="/script.js"></script>
+    <title>Wishlist!</title>
+</head>
+<body>
+<header class="p-3 bg-dark text-white">
+    <div class="container-fluid">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+            <h3 class="me-2">Wishlist</h3>
+            <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
+            </ul>
+            <form class="col-12 col-lg-auto mb-3 mb-lg-0 me-lg-3">
+                <input class="form-control me-2" type="username" placeholder="Username" aria-label="Username"
+                       id="inUsername">
+            </form>
+            <div class="text-end">
+                <button class="btn btn-outline-light me-2" type="button" id="butLogin">Login</button>
+                <button class="btn btn-warning" type="button" data-bs-toggle="modal" data-bs-target="#signUpModal"
+                        id="butSign-Up">
+                    Sign-up
+                </button>
+                <button class="btn btn-outline-light me-2" type="button" id="butLogout" style="display:none;">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+<div class="container-fluid">
+    <form class="row row-cols-lg-auto g-3 align-items-center mt-2" onsubmit="findWishlist(event)"
+          id="formSearchWishlist">
+        <div class="col-12">
+            <input class="form-control" type="search" placeholder="Search by username"
+                   aria-label="Search by username" id="inputFilterByUsername">
+        </div>
+        <div class="col-12">
+            <input class="form-control" type="search" placeholder="Search by name"
+                   aria-label="Search by name" id="inputFilterByName">
+        </div>
+        <div class="col-12">
+            <select class="form-select" aria-label="Select orderBy" id="selectOrderBy">
+                <option selected value="createdat">createdAt</option>
+                <option value="name">name</option>
+                <option value="username">username</option>
+            </select>
+        </div>
+        <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="checkOnlyMy">
+                <label class="form-check-label" for="checkOnlyMy">Only my</label>
+            </div>
+        </div>
+        <div class="col-12">
+            <button class="btn btn-primary" type="submit">Search</button>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-secondary" id="butNewWishlist">Create new</button>
+        </div>
+    </form>
+    <table class="table table-hover" id="tableWishlist" style="vertical-align: baseline;">
+        <thead>
+        <th scope="col">Username</th>
+        <th scope="col">Name</th>
+        <th scope="col">Date</th>
+        <th scope="col">Comment</th>
+        <th scope="col"></th>
+        </thead>
+        <tbody>
+
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="wishlistModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Wishlist</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="butSaveWL">Save</button>
+                <button type="button" class="btn btn-outline-danger" id="butDeleteWL" onclick="deleteWL()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         class="bi bi-trash" viewBox="0 0 16 16">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                        <path fill-rule="evenodd"
+                              d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                    </svg>
+                    Delete
+                </button>
+                <button type="button" class="btn btn-secondary" id="butBack">Back</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="signUpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sign-up</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formSignUp">
+                    <div class="mb-3">
+                        <label for="inputUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="inputUsername" name="username">
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputEmail" class="form-label">Email address</label>
+                        <input type="email" class="form-control" id="inputEmail" name="email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputTelegramId" class="form-label">Telegram id</label>
+                        <input type="text" class="form-control" id="inputTelegramId" name="telegramId">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="butSignUp">Sign-up</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#butLogin").click(function () {
+            var url = "/api/user/" + document.getElementById("inUsername").value;
+            console.log("GET " + url);
+            $.ajax({
+                type: "GET",
+                url: url,
+                contentType: "application/json; charset=utf-8",
+                success: function(user) {
+                    login(user.id);
+                },
+                error: function(xhr, status, error) {
+                    var errorMessage = xhr.status + ': ' + xhr.statusText;
+                    console.log(errorMessage);
+                }
+            });
+        });
+
+        $("#butSignUp").click(function () {
+            var frm = document.getElementById("formSignUp");
+            var url = "/api/user/";
+            console.log("POST " + url);
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: formToJson(frm),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function(user) {
+                    document.getElementById("inUsername").value = user.username;
+                    login(user.id);
+                },
+                error: function(xhr, status, error) {
+                    var errorMessage = xhr.status + ': ' + xhr.statusText;
+                    console.log(errorMessage);
+                }
+            });
+            $("#signUpModal").modal("hide");
+        });
+
+        $("#butLogout").click(function () {
+            logout();
+        });
+
+        $("#butNewWishlist").click(function (e) {
+            e.preventDefault();
+            showModal(null, true, true);
+        });
+
+        $("#butSaveWL").click(function () {
+            saveWishlist();
+        });
+
+        $("#butBack").click(function () {
+            var wishlistId = document.getElementById("inputWLId").value;
+            showWishlist(wishlistId);
+        });
+
+        $("#checkOnlyMy").change(function () {
+            if (this.checked) {
+                $("#inputFilterByUsername").prop('disabled', true);
+            } else {
+                $("#inputFilterByUsername").prop('disabled', false);
+            }
+        });
+    });
+
+
+
+
+
+
+</script>
+</html>
